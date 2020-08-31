@@ -39,8 +39,10 @@ int main(int argc, char **argv) {
 #define V F.format
 #define W F.width
 #define H F.height
-    PFV("input WebP info:\ndimensions: %u x %u\nuses alpha: %s\n"
-	"format: %s (%d)",
+    PFV("Input WebP info:\n"
+	"Dimensions: %u x %u\n"
+	"Uses alpha: %s\n"
+	"Format: %s (%d)",
 	W, H, A ? "yes" : "no",
 	(unsigned)V < 3 ?
 	    (char *[]){"undefined/mixed", "lossy", "lossless"}[V] :
@@ -56,14 +58,21 @@ int main(int argc, char **argv) {
       x = fread(i, 1, S, fd);
     }
     WebPIDelete(d);
-    PFV("size: %u bytes (%.17g bpp)", l, (l * 8.) / (W * H));
+    PFV("Size: %u bytes (%.17g bpp)", l, (l * 8.) / (W * H));
     GETOUTFILE
 #define D c.output.u.RGBA
 #ifdef PAM
     fprintf(fd,
-	    A ? "P7\nWIDTH %u\nHEIGHT %u\nDEPTH 4\nMAXVAL 255\n"
-		"TUPLTYPE RGB_ALPHA\nENDHDR\n" :
-		"P6\n%u %u\n255\n",
+	    A ? "P7\n"
+		"WIDTH %u\n"
+		"HEIGHT %u\n"
+		"DEPTH 4\n"
+		"MAXVAL 255\n"
+		"TUPLTYPE RGB_ALPHA\n"
+		"ENDHDR\n" :
+		"P6\n"
+		"%u %u\n"
+		"255\n",
 	    W, H);
     fwrite(D.rgba, D.size, 1, fd);
 #else
@@ -71,7 +80,7 @@ int main(int argc, char **argv) {
 		   A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
     E(png_image_write_to_stdio(&o, fd, 0, D.rgba, 0, 0), "writing PNG: %s",
       o.message);
-    if(o.warning_or_error) { PF("warning writing PNG: %s", o.message); }
+    if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
     // TODO: PNG OUTPUT INFO
 #endif
     WebPFreeDecBuffer(&c.output);

@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   }
     EP(png_image_begin_read_from_stdio(&i, fd), "info", 1);
     if(i.format & PNG_FORMAT_FLAG_LINEAR) {
-      P("warning: input PNG is 16bpc, will be downsampled to 8bpc");
+      P("Warning: input PNG is 16bpc, will be downsampled to 8bpc");
     }
     bool A = !!(i.format & PNG_FORMAT_FLAG_ALPHA);
     i.format = (*(uint8_t *)&(uint16_t){1}) ? PNG_FORMAT_BGRA : PNG_FORMAT_ARGB;
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     EW(WebPPictureAlloc(&o), "allocat");
 #ifdef PAM
     if(255 % i.maxval) {
-      PF("warning: scaling from maxval %lu to 255", i.maxval);
+      PF("Warning: scaling from maxval %lu to 255", i.maxval);
     }
     for(int y = 0; y < i.height; y++) {
       pnm_readpamrow(&i, r);
@@ -85,25 +85,31 @@ int main(int argc, char **argv) {
 				THREADLEVEL
 				.near_lossless = 100,
 				// ^ don't modify visible pixels
-				// .exact=0, // delete invisible pixels
+				// .exact=1, // don't delete invisible pixels
 				.pass = 1, // unused, for WebPValidateConfig
 				.segments = 1}, // ditto
 		  &o),
        "encod");
 #define F s.lossless_features
 #define C s.palette_size
-    PFV("output WebP info:\ndimensions: %u x %u\nsize: %u bytes (%.17g bpp)\n\
-header size: %u, image data size: %u\nuses alpha: %s\n\
-precision bits: histogram=%u transform=%u cache=%u\n\
-lossless features:%s%s%s%s\ncolors: %s%u",
-	o.width, o.height, s.coded_size,
-	s.coded_size * 8. / (o.width * o.height), s.lossless_hdr_size,
-	s.lossless_data_size,
-	A && WebPPictureHasTransparency(&o) ? "yes" : "no", s.histogram_bits,
-	s.transform_bits, s.cache_bits,
+    PFV("Output WebP info:\n"
+	"Dimensions: %u x %u\n"
+	"Size: %u bytes (%.17g bpp)\n"
+	"Header size: %u, image data size: %u\n"
+	"Uses alpha: %s\n"
+	"Precision bits: histogram=%u transform=%u cache=%u\n"
+	"Lossless features:%s%s%s%s\n"
+	"Colors: %s%u",
+	o.width, o.height,
+	s.coded_size, s.coded_size * 8. / (o.width * o.height),
+	s.lossless_hdr_size, s.lossless_data_size,
+	A && WebPPictureHasTransparency(&o) ? "yes" : "no",
+	s.histogram_bits, s.transform_bits, s.cache_bits,
 	F ? F & 1 ? " prediction" : "" : " none",
-	F && F & 2 ? " cross-color" : "", F && F & 4 ? " subtract-green" : "",
-	F && F & 8 ? " palette" : "", C ? "" : ">", C ? C : 256);
+	F && F & 2 ? " cross-color" : "",
+	F && F & 4 ? " subtract-green" : "",
+	F && F & 8 ? " palette" : "",
+	C ? "" : ">", C ? C : 256);
     WebPPictureFree(&o);
     GETINFILE
   }

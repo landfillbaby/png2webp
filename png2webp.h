@@ -28,26 +28,26 @@
   if(verbose) { PF(x, __VA_ARGS__); }
 #define E(f, s, ...) \
   if(!(f)) { \
-    PF("ERROR: " s, __VA_ARGS__); \
+    PF("ERROR " s, __VA_ARGS__); \
     return 1; \
   }
 #define HELP \
-  P("usage:\n\
-" INEXT "2" OUTEXT " [-fv] [--] file." INEXT " ...\n\
-" INEXT "2" OUTEXT " [-p[fv] [--] [{infile." INEXT "|-} [outfile." OUTEXT \
-    "|-]]]\n\
-\n\
-for each file." INEXT ", outputs an equivalent file." OUTEXT "\n\
-\n\
--f: force overwrite of output files (has no effect on stdout, see below).\n\
--v: be verbose.\n\
--p: default without arguments.\n\
-    work with a single file, allowing piping from stdin or to stdout,\n\
-    or using a different output filename to the input.\n\
-    infile." INEXT " and outfile." OUTEXT \
-    " default to stdin or stdout respectively,\n\
-    or explicitly as \"-\".\n\
-    will error if stdin/stdout is used and is a terminal."); \
+  P("Usage:\n" \
+    INEXT "2" OUTEXT " [-fv] [--] file." INEXT " ...\n" \
+    INEXT "2" OUTEXT " [-p[fv] [--] [{infile." INEXT "|-} [outfile." OUTEXT \
+    "|-]]]\n" \
+    "\n" \
+    "For each file." INEXT ", outputs an equivalent file." OUTEXT "\n" \
+    "\n" \
+    "-f: Force overwrite of output files (has no effect on stdout, see -p).\n" \
+    "-v: Be verbose.\n" \
+    "-p: Default when no arguments.\n" \
+    "    Work with a single file, allowing piping from stdin or to stdout,\n" \
+    "    or using a different output filename to the input.\n" \
+    "    infile." INEXT " and outfile." OUTEXT \
+    " default to stdin or stdout respectively,\n" \
+    "    or explicitly as \"-\".\n" \
+    "    Will error if stdin/stdout is used and is a terminal."); \
   return -1;
 #define B(x, y, o) \
   if(o || (unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
@@ -107,7 +107,7 @@ for each file." INEXT ", outputs an equivalent file." OUTEXT "\n\
       if(!argc) { HELP } \
     } \
     if(!usestdin) { \
-      PFV("%scoding \"%s\"...", "de", *argv); \
+      PFV("%scoding \"%s\"...", "De", *argv); \
       E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
 	"reading", strerror(errno)); \
     } \
@@ -118,7 +118,7 @@ for each file." INEXT ", outputs an equivalent file." OUTEXT "\n\
   } \
   if(usepipe || !--argc) { return 0; } \
   argv++; \
-  PFV("%scoding \"%s\"...", "de", *argv); \
+  PFV("%scoding \"%s\"...", "De", *argv); \
   E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
     strerror(errno));
 #define GETOUTFILE \
@@ -141,7 +141,7 @@ for each file." INEXT ", outputs an equivalent file." OUTEXT "\n\
   if(!usestdout) { \
     char wx[] = "wbx"; \
     if(force) { wx[2] = 0; } \
-    PFV("%scoding \"%s\"...", "en", outname); \
+    PFV("%scoding \"%s\"...", "En", outname); \
     E(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
       force ? "writing" : "creation", strerror(errno)); \
   }
