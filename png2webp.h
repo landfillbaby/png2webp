@@ -1,9 +1,9 @@
 // vi: sw=2
 #ifdef PAM
-#define z "pam"
+#define Z "pam"
 #else
 #include <png.h>
-#define z "png"
+#define Z "png"
 #endif
 #include <errno.h>
 #include <stdbool.h>
@@ -20,42 +20,42 @@
 #include <unistd.h>
 #define _setmode(x, y) 0
 #endif
-#define p(x) fputs(x "\n", stderr)
-#define pf(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-#define pv(x) \
-  if(verbose) { p(x); }
-#define pfv(x, ...) \
-  if(verbose) { pf(x, __VA_ARGS__); }
-#define e(f, s, ...) \
+#define P(x) fputs(x "\n", stderr)
+#define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
+#define PV(x) \
+  if(verbose) { P(x); }
+#define PFV(x, ...) \
+  if(verbose) { PF(x, __VA_ARGS__); }
+#define E(f, s, ...) \
   if(!(f)) { \
-    pf("ERROR: " s, __VA_ARGS__); \
+    PF("ERROR: " s, __VA_ARGS__); \
     return 1; \
   }
-#define help \
-  p("usage:\n\
-" inext "2" outext " [-fv] [--] file." inext " ...\n\
-" inext "2" outext " [-p[fv] [--] [{infile." inext "|-} [outfile." outext \
+#define HELP \
+  P("usage:\n\
+" INEXT "2" OUTEXT " [-fv] [--] file." INEXT " ...\n\
+" INEXT "2" OUTEXT " [-p[fv] [--] [{infile." INEXT "|-} [outfile." OUTEXT \
     "|-]]]\n\
 \n\
-for each file." inext ", outputs an equivalent file." outext "\n\
+for each file." INEXT ", outputs an equivalent file." OUTEXT "\n\
 \n\
 -f: force overwrite of output files (has no effect on stdout, see below).\n\
 -v: be verbose.\n\
 -p: default without arguments.\n\
     work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
-    infile." inext " and outfile." outext \
+    infile." INEXT " and outfile." OUTEXT \
     " default to stdin or stdout respectively,\n\
     or explicitly as \"-\".\n\
     will error if stdin/stdout is used and is a terminal."); \
   return -1;
-#define b(x, y, o) \
+#define B(x, y, o) \
   if(o || (unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
     if(isatty(x)) { \
-      pf("ERROR: std%s is a terminal", #y); \
-      help \
+      PF("ERROR: std%s is a terminal", #y); \
+      HELP \
     } \
-    e(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
+    E(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
     fd = std##y; \
     usestd##y = 1; \
   }
@@ -67,7 +67,7 @@ for each file." inext ", outputs an equivalent file." outext "\n\
       case 'p': usepipe = 1; break; \
       case 'f': force = 1; break; \
       case 'v': verbose = 1; break; \
-      default: help \
+      default: HELP \
     } \
   } \
   argc -= optind; \
@@ -86,7 +86,7 @@ for each file." inext ", outputs an equivalent file." outext "\n\
 	    argv++; \
 	    goto endflagloop; /*break nested or fall through*/ \
 	  } \
-	default: help \
+	default: HELP \
       } \
     } \
   } \
@@ -97,51 +97,51 @@ for each file." inext ", outputs an equivalent file." outext "\n\
   char *outname; \
   if(argc < 2) { \
     usepipe = 1; \
-    b(0, in, 1); \
+    B(0, in, 1); \
   } else { \
     FLAGLOOP \
     if(usepipe) { \
-      if(argc > 2) { help } \
-      b(0, in, 0); \
+      if(argc > 2) { HELP } \
+      B(0, in, 0); \
     } else { \
-      if(!argc) { help } \
+      if(!argc) { HELP } \
     } \
     if(!usestdin) { \
-      pfv("%scoding \"%s\"...", "de", *argv); \
-      e(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
+      PFV("%scoding \"%s\"...", "de", *argv); \
+      E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
 	"reading", strerror(errno)); \
     } \
   }
 #define GETINFILE \
   if(!usestdout) { \
-    e(!fclose(fd), "closing %s: %s", outname, strerror(errno)); \
+    E(!fclose(fd), "closing %s: %s", outname, strerror(errno)); \
   } \
   if(usepipe || !--argc) { return 0; } \
   argv++; \
-  pfv("%scoding \"%s\"...", "de", *argv); \
-  e(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+  PFV("%scoding \"%s\"...", "de", *argv); \
+  E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
     strerror(errno));
 #define GETOUTFILE \
-  if(!usestdin) { e(!fclose(fd), "closing %s: %s", *argv, strerror(errno)); } \
+  if(!usestdin) { E(!fclose(fd), "closing %s: %s", *argv, strerror(errno)); } \
   if(usepipe) { \
-    b(1, out, 0) else { outname = argv[1]; } \
+    B(1, out, 0) else { outname = argv[1]; } \
   } else { \
     char *dot = strrchr(*argv, '.'); \
-    if(dot && dot != *argv && !strcasecmp(dot + 1, inext)) { \
-      outname = realloc(outname, dot - *argv + 1 + sizeof(outext)); \
+    if(dot && dot != *argv && !strcasecmp(dot + 1, INEXT)) { \
+      outname = realloc(outname, dot - *argv + 1 + sizeof(OUTEXT)); \
       memcpy(outname, *argv, dot - *argv + 1); \
-      memcpy(outname + (dot - *argv + 1), outext, sizeof(outext)); \
+      memcpy(outname + (dot - *argv + 1), OUTEXT, sizeof(OUTEXT)); \
     } else { \
       size_t len = strlen(*argv); \
-      outname = realloc(outname, len + 1 + sizeof(outext)); \
+      outname = realloc(outname, len + 1 + sizeof(OUTEXT)); \
       memcpy(outname, *argv, len); \
-      memcpy(outname + len, "." outext, sizeof(outext) + 1); \
+      memcpy(outname + len, "." OUTEXT, sizeof(OUTEXT) + 1); \
     } \
   } \
   if(!usestdout) { \
     char wx[] = "wbx"; \
     if(force) { wx[2] = 0; } \
-    pfv("%scoding \"%s\"...", "en", outname); \
-    e(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
+    PFV("%scoding \"%s\"...", "en", outname); \
+    E(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
       force ? "writing" : "creation", strerror(errno)); \
   }
