@@ -40,6 +40,14 @@ For example: GCC, dynamically linked:
     gcc -O2 -o png2webp png2webp.c -lwebp -lpng
     gcc -O2 -o webp2png webp2png.c -lwebp -lpng
 
+If you get any warnings or errors, just
+[open an issue](https://github.com/landfillbaby/png2webp/issues/new)
+and put the errors in a code block in the comment box:
+
+    ```
+    errors go here
+    ```
+
 ## Compilation flags
 Define these as preprocessor macros:
 
