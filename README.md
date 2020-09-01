@@ -35,7 +35,7 @@ Just use your favourite C compiler:
 in at the same time for a tiny static executable.
 * Turn on whatever optimization level you want (preferably more than none).
 
-e.g. for GCC, dynamically linked:
+For example: GCC, dynamically linked:
 
     gcc -O2 -o png2webp png2webp.c -lwebp -lpng
     gcc -O2 -o webp2png webp2png.c -lwebp -lpng
@@ -66,5 +66,5 @@ than having to use a wrapper script with `cwebp` or `imagemagick` or something.
 I don't care about lossy WebP stuff, so I wrote a program that doesn't encode
 it at all, and uses maximum compression by default.
 
-As stated above this makes very tiny static execuables when globally optimized,
+As stated above this makes very tiny static executables when globally optimized,
 for platforms like Windows that don't provide `libwebp` or `libpng`.
