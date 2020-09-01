@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     E(i.visual, "nonstandard tuple type: \"%s\"", i.tuple_type);
     tuple *r = pnm_allocpamrow(&i);
 #else
-    png_image i = {0, PNG_IMAGE_VERSION};
+    png_image i = {.version = 1};
 #define EP(f, s, d) \
   E(f, "reading PNG %s: %s", s, i.message); \
   if(i.warning_or_error) { \

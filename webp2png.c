@@ -1,20 +1,18 @@
 // vi: sw=2
 #include <webp/decode.h>
-/*TODO: ideally should palette if <=256 colors (in order of appearance),
-or at least try to palette when input webp was,
-but that's not part of either libpng encoding or libwebp decoding*/
-/*#include<webp/encode.h>//for WebPPicture
-WEBP_EXTERN int WebPGetColorPalette(//declared in libwebp utils/utils.h
-const struct WebPPicture*const,uint32_t*const);*/
-// TODO: should also try to compress somewhat better
+/*
+TODO: Try to compress somewhat better
+Ideally should palette if <=256 colors (in order of appearance),
+or at least try to palette when input WebP was,
+but that's not part of either libpng encoding or libwebp decoding.
+Maybe do this:
+#include <webp/encode.h> // for WebPPicture
+WEBP_EXTERN int WebPGetColorPalette( // declared in libwebp utils/utils.h
+const struct WebPPicture *const, uint32_t *const);
+*/
 #define INEXT "webp"
 #define OUTEXT Z
 #include "webp2png.h"
-#ifdef DEBUG_IDEC
-#define S 256
-#else
-#define S 16384
-#endif
 int main(int argc, char **argv) {
   FILE *fd;
   GETARGS
@@ -26,6 +24,11 @@ int main(int argc, char **argv) {
 	.options.use_threads = 1
 #endif
     };
+#ifdef DEBUG_IDEC
+#define S 256
+#else
+#define S 16384
+#endif
     uint8_t i[S];
     int l = fread(i, 1, S, fd);
     char *k[] = {"out of RAM",		"invalid params", "bitstream broke",
@@ -76,8 +79,7 @@ int main(int argc, char **argv) {
 	    W, H);
     fwrite(D.rgba, D.size, 1, fd);
 #else
-    png_image o = {0, PNG_IMAGE_VERSION, W, H,
-		   A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
+    png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
     E(png_image_write_to_stdio(&o, fd, 0, D.rgba, 0, 0), "writing PNG: %s",
       o.message);
     if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
