@@ -63,16 +63,12 @@
     usestd##y = 1; \
   }
 #define FLAGLIST \
+  case 'p': usepipe = 1; /* fall through */ \
   case 'b': \
     if(chosen) { HELP } \
     chosen = 1; \
     break; \
   case 'f': force = 1; break; \
-  case 'p': \
-    if(chosen) { HELP } \
-    chosen = 1; \
-    usepipe = 1; \
-    break; \
   case 'v': \
     verbose = 1; \
     break;
