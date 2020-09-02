@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     int r;
     E(!(r = WebPGetFeatures(i, l, &F)), "reading WebP header: %d (%s)", r,
       r & ~7 ? "???" : k[r - 1]);
+    char *formats[] = {"undefined/mixed", "lossy", "lossless"};
 #define V F.format
 #define W F.width
 #define H F.height
@@ -46,11 +47,14 @@ int main(int argc, char **argv) {
 	"Dimensions: %u x %u\n"
 	"Uses alpha: %s\n"
 	"Format: %s (%d)",
-	W, H, A ? "yes" : "no",
-	(unsigned)V < 3 ?
-	    (char *[]){"undefined/mixed", "lossy", "lossless"}[V] :
-	    "???",
-	V);
+	W, H, A ? "yes" : "no", (unsigned)V < 3 ? formats[V] : "???", V);
+#ifdef LOSSYISERROR
+    E(V == 2,
+      "reading WebP header: 4 (%s:\n"
+      "                              compression is %s (%d),\n"
+      "                              instead of lossless (2))",
+      k[3], (unsigned)V < 3 ? formats[V] : "???", V);
+#endif
     E(!F.has_animation, "reading WebP header: 4 (%s: animation)", k[3]);
     if(A) { c.output.colorspace = MODE_RGBA; }
     WebPIDecoder *d;

@@ -64,6 +64,9 @@ I'm pretty sure it only uses 2 threads anyway.
 `DEBUG_IDEC`: Use a 256 byte buffer for decoding WebP files,
 instead of a 16 kibibyte one.
 
+`LOSSYISERROR`: Give an error when trying to decode lossy WebP files.
+This means no lossy VP8 code in static globally optimized builds!
+
 `PAM`: Read/write `netpbm` PAM files instead of PNGs.
 Link `pam2webp` against `libnetpbm` instead of `libpng`.
 `webp2pam` doesn't need `libnetpbm`, it constructs the file itself:
