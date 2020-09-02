@@ -11,21 +11,26 @@ requires several different programs
 
 # Usage
 
-    png2webp [-fv] [--] file.png ...
-    png2webp [-p[fv] [--] [{infile.png|-} [outfile.webp|-]]]
+    png2webp [-bfv-] infile.png ...
+    png2webp [-pfv-] [{infile.png|-} [outfile.webp|-]]
 
-For each `file.png`, outputs an equivalent `file.webp`
+`-b`: Default when at least 1 file is given.
+    Work with many input files (Batch mode).
+    Constructs output filenames by removing the `.png` extension if possible,
+    and appending `.webp`.
 
-`-f`: Force overwrite of output files (has no effect on stdout, see `-p`).
+`-p`: Default when no files are given.
+    Work with a single file, allowing Piping from stdin or to stdout,
+    or using a different output filename to the input.
+    `infile.png` and `outfile.webp` default to stdin and stdout respectively,
+    or explicitly as `-`.
+    Will error if stdin/stdout is used and is a terminal.
+
+`-f`: Force overwrite of output files (has no effect on stdout).
 
 `-v`: Be verbose.
 
-`-p`: Default when no arguments are given.
-      Work with a single file, allowing piping from stdin or to stdout,
-      or using a different output filename to the input.
-      `infile.png` and `outfile.webp` default to stdin or stdout respectively,
-      or explicitly as `-`.
-      Will return a usage error if stdin or stdout is used and is a terminal.
+`--`: Explicitly stop parsing options.
 
 `webp2png` has the same syntax.
 
