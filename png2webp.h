@@ -127,16 +127,15 @@
     B(1, out, 0) else { outname = argv[1]; } \
   } else { \
     char *dot = strrchr(*argv, '.'); \
+    size_t len; \
     if(dot && dot != *argv && !strcasecmp(dot + 1, INEXT)) { \
-      outname = realloc(outname, dot - *argv + 1 + sizeof(OUTEXT)); \
-      memcpy(outname, *argv, dot - *argv + 1); \
-      memcpy(outname + (dot - *argv + 1), OUTEXT, sizeof(OUTEXT)); \
+      len = dot - *argv; \
     } else { \
-      size_t len = strlen(*argv); \
-      outname = realloc(outname, len + 1 + sizeof(OUTEXT)); \
-      memcpy(outname, *argv, len); \
-      memcpy(outname + len, "." OUTEXT, sizeof(OUTEXT) + 1); \
+      len = strlen(*argv); \
     } \
+    outname = realloc(outname, len + sizeof("." OUTEXT)); \
+    memcpy(outname, *argv, len); \
+    memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
   } \
   if(!usestdout) { \
     char wx[] = "wbx"; \
