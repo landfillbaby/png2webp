@@ -94,7 +94,7 @@
 #endif
 #define GETARGS \
   bool force = 0, usepipe = 0, verbose = 0, usestdin = 0, usestdout = 0; \
-  char *outname; \
+  char *outname = 0; \
   if(argc < 2) { \
     usepipe = 1; \
     B(0, in, 1); \
