@@ -33,24 +33,27 @@
   }
 #define HELP \
   P("Usage:\n" \
-    INEXT "2" OUTEXT " [-fv] [--] file." INEXT " ...\n" \
-    INEXT "2" OUTEXT " [-p[fv] [--] [{infile." INEXT "|-} [outfile." OUTEXT \
-    "|-]]]\n" \
-    "\n" \
-    "For each file." INEXT ", outputs an equivalent file." OUTEXT "\n" \
-    "\n" \
-    "-f: Force overwrite of output files (has no effect on stdout, see -p).\n" \
-    "-v: Be verbose.\n" \
-    "-p: Default when no arguments.\n" \
-    "    Work with a single file, allowing piping from stdin or to stdout,\n" \
+    INEXT "2" OUTEXT " [-bfv-] infile." INEXT " ...\n" \
+    INEXT "2" OUTEXT " [-pfv-] [{infile." INEXT "|-} [outfile." OUTEXT \
+    "|-]]\n\n" \
+    "-b: Default when at least 1 file is given.\n" \
+    "    Work with many input files (Batch mode).\n" \
+    "    Constructs output filenames by removing the \"." INEXT \
+    "\" extension if possible,\n" \
+    "    and appending \"." OUTEXT "\".\n" \
+    "-p: Default when no files are given.\n" \
+    "    Work with a single file, allowing Piping from stdin or to stdout,\n" \
     "    or using a different output filename to the input.\n" \
-    "    infile." INEXT " and outfile." OUTEXT \
-    " default to stdin or stdout respectively,\n" \
+    "    \"infile." INEXT "\" and \"outfile." OUTEXT \
+    "\" default to stdin and stdout respectively,\n" \
     "    or explicitly as \"-\".\n" \
-    "    Will error if stdin/stdout is used and is a terminal."); \
+    "    Will error if stdin/stdout is used and is a terminal.\n" \
+    "-f: Force overwrite of output files (has no effect on stdout).\n" \
+    "-v: Be verbose.\n" \
+    "--: Explicitly stop parsing options."); \
   return -1;
-#define B(x, y, o) \
-  if(o || (unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
+#define B(x, y) \
+  if((unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
     if(isatty(x)) { \
       PF("ERROR: std%s is a terminal", #y); \
       HELP \
@@ -59,14 +62,26 @@
     fd = std##y; \
     usestd##y = 1; \
   }
+#define FLAGLIST \
+  case 'b': \
+    if(chosen) { HELP } \
+    chosen = 1; \
+    break; \
+  case 'f': force = 1; break; \
+  case 'p': \
+    if(chosen) { HELP } \
+    chosen = 1; \
+    usepipe = 1; \
+    break; \
+  case 'v': \
+    verbose = 1; \
+    break;
 #ifdef USEGETOPT
 #define FLAGLOOP \
   int c; \
   while((c = getopt(argc, argv, ":pfv")) != -1) { \
     switch(c) { \
-      case 'p': usepipe = 1; break; \
-      case 'f': force = 1; break; \
-      case 'v': verbose = 1; break; \
+      FLAGLIST \
       default: HELP \
     } \
   } \
@@ -77,9 +92,7 @@
   while(--argc && **++argv == '-' && argv[0][1]) { \
     while(*++*argv) { \
       switch(**argv) { \
-	case 'p': usepipe = 1; break; \
-	case 'f': force = 1; break; \
-	case 'v': verbose = 1; break; \
+	FLAGLIST \
 	case '-': \
 	  if(!argv[0][1]) { \
 	    argc--; \
@@ -93,24 +106,19 @@
   endflagloop:
 #endif
 #define GETARGS \
-  bool force = 0, usepipe = 0, verbose = 0, usestdin = 0, usestdout = 0; \
+  bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
+       chosen = 0; \
   char *outname = 0; \
-  if(argc < 2) { \
-    usepipe = 1; \
-    B(0, in, 1); \
-  } else { \
-    FLAGLOOP \
-    if(usepipe) { \
-      if(argc > 2) { HELP } \
-      B(0, in, 0); \
-    } else { \
-      if(!argc) { HELP } \
-    } \
-    if(!usestdin) { \
-      PFV("%scoding \"%s\"...", "De", *argv); \
-      E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
-	"reading", strerror(errno)); \
-    } \
+  FLAGLOOP \
+  if(!chosen && !argc) { usepipe = 1; } \
+  if(usepipe) { \
+    if(argc > 2) { HELP } \
+    B(0, in); \
+  } \
+  if(!usestdin) { \
+    PFV("%scoding \"%s\"...", "De", *argv); \
+    E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+      strerror(errno)); \
   }
 #define GETINFILE \
   if(!usestdout) { \
@@ -124,7 +132,7 @@
 #define GETOUTFILE \
   if(!usestdin) { E(!fclose(fd), "closing %s: %s", *argv, strerror(errno)); } \
   if(usepipe) { \
-    B(1, out, 0) else { outname = argv[1]; } \
+    B(1, out) else { outname = argv[1]; } \
   } else { \
     char *dot = strrchr(*argv, '.'); \
     size_t len; \
