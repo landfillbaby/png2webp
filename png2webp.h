@@ -75,7 +75,7 @@
 #ifdef USEGETOPT
 #define FLAGLOOP \
   int c; \
-  while((c = getopt(argc, argv, ":pfv")) != -1) { \
+  while((c = getopt(argc, argv, ":bpfv")) != -1) { \
     switch(c) { \
       FLAGLIST \
       default: HELP \
