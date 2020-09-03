@@ -11,14 +11,41 @@
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
-#include <fcntl.h>
 #include <io.h>
-#define isatty _isatty
 #define strcasecmp _stricmp
+#define O(x) _##x
+#define S_IRUSR _S_IREAD
+#define S_IWUSR _S_IWRITE
+#ifndef NOFOPENX
+#define NOFOPENX
+#endif
 #else
 #include <strings.h>
 #include <unistd.h>
 #define _setmode(x, y) 0
+#define _O_BINARY 0
+#define O(x) x
+#endif
+#ifdef NOFOPENX
+#include <fcntl.h>
+#include <sys/stat.h>
+#define OPENW \
+  PFV("%scoding \"%s\"...", "En", outname); \
+  int rawfd = O(open)(outname, \
+		      O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
+			  (force ? 0 : O(O_EXCL)), \
+		      S_IRUSR | S_IWUSR); \
+  E(rawfd != -1, "opening \"%s\" for %s: %s", outname, \
+    force ? "writing" : "creation", strerror(errno)); \
+  E(fd = O(fdopen)(rawfd, "wb"), "opening \"%s\" for %s: %s", outname, \
+    force ? "writing" : "creation", strerror(errno));
+#else
+#define OPENW \
+  char wx[] = "wbx"; \
+  if(force) { wx[2] = 0; } \
+  PFV("%scoding \"%s\"...", "En", outname); \
+  E(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
+    force ? "writing" : "creation", strerror(errno));
 #endif
 #define P(x) fputs(x "\n", stderr)
 #define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
@@ -54,7 +81,7 @@
   return -1;
 #define B(x, y) \
   if((unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
-    if(isatty(x)) { HELP } \
+    if(O(isatty)(x)) { HELP } \
     E(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
     fd = std##y; \
     usestd##y = 1; \
@@ -139,10 +166,4 @@
     memcpy(outname, *argv, len); \
     memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
   } \
-  if(!usestdout) { \
-    char wx[] = "wbx"; \
-    if(force) { wx[2] = 0; } \
-    PFV("%scoding \"%s\"...", "En", outname); \
-    E(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
-      force ? "writing" : "creation", strerror(errno)); \
-  }
+  if(!usestdout) { OPENW }
