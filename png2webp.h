@@ -54,10 +54,7 @@
   return -1;
 #define B(x, y) \
   if((unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
-    if(isatty(x)) { \
-      PF("ERROR: std%s is a terminal", #y); \
-      HELP \
-    } \
+    if(isatty(x)) { HELP } \
     E(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
     fd = std##y; \
     usestd##y = 1; \
@@ -112,6 +109,7 @@
     B(0, in); \
   } \
   if(!usestdin) { \
+    if(!argc) { HELP } \
     PFV("%scoding \"%s\"...", "De", *argv); \
     E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
       strerror(errno)); \
