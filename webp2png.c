@@ -24,13 +24,11 @@ int main(int argc, char **argv) {
 	.options.use_threads = 1
 #endif
     };
-#ifdef DEBUG_IDEC
-#define S 256
-#else
-#define S 16384
+#ifndef IDEC_BUFSIZE
+#define IDEC_BUFSIZE 65536
 #endif
-    uint8_t i[S];
-    int l = fread(i, 1, S, fd);
+    uint8_t i[IDEC_BUFSIZE];
+    int l = fread(i, 1, IDEC_BUFSIZE, fd);
     char *k[] = {"out of RAM",		"invalid params", "bitstream broke",
 		 "unsupported feature", "suspended",	  "you cancelled it",
 		 "not enough data"};
@@ -62,7 +60,7 @@ int main(int argc, char **argv) {
     for(int x = l; (r = WebPIAppend(d, i, x)); l += x) {
       E(r == 5 && !feof(fd), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
 	r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
-      x = fread(i, 1, S, fd);
+      x = fread(i, 1, IDEC_BUFSIZE, fd);
     }
     WebPIDelete(d);
     PFV("Size: %u bytes (%.17g bpp)", l, (l * 8.) / (W * H));

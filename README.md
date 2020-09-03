@@ -61,8 +61,8 @@ Define these as preprocessor macros:
 `NOTHREADS`: Use single-threaded WebP encoding/decoding.
 I'm pretty sure it only uses 2 threads anyway.
 
-`DEBUG_IDEC`: Use a 256 byte buffer for decoding WebP files,
-instead of a 16 kibibyte one.
+`IDEC_BUFSIZE`: Define this to a positive integer, the size in bytes of the
+buffer for decoding WebP files. Defaults to 65536 (64 kibibytes).
 
 `LOSSYISERROR`: Give an error when trying to decode lossy WebP files.
 This means no lossy VP8 code in static globally optimized builds!
