@@ -21,6 +21,9 @@ int main(int argc, char **argv) {
     E(i.visual, "nonstandard tuple type: \"%s\"", i.tuple_type);
     tuple *r = pnm_allocpamrow(&i);
 #else
+#ifdef USEADVANCEDPNG
+#error // TODO
+#else
     png_image i = {.version = 1};
 #define EP(f, s, d) \
   E(f, "reading PNG %s: %s", s, i.message); \
@@ -34,6 +37,7 @@ int main(int argc, char **argv) {
     }
     bool A = !!(i.format & PNG_FORMAT_FLAG_ALPHA);
     i.format = (*(uint8_t *)&(uint16_t){1}) ? PNG_FORMAT_BGRA : PNG_FORMAT_ARGB;
+#endif
 #endif
     WebPPicture o = {1, .width = i.width, i.height, .writer = w};
     WebPAuxStats s;
@@ -70,7 +74,11 @@ int main(int argc, char **argv) {
     }
     pnm_freepamrow(r);
 #else
+#ifdef USEADVANCEDPNG
+#error // TODO
+#else
     EP(png_image_finish_read(&i, 0, o.argb, 0, 0), "data", 0);
+#endif
 #endif
 #ifdef NOTHREADS
 #define THREADLEVEL
