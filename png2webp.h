@@ -26,6 +26,17 @@
 #define _O_BINARY 0
 #define O(x) x
 #endif
+#define P(x) fputs(x "\n", stderr)
+#define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
+#define PV(x) \
+  if(verbose) { P(x); }
+#define PFV(x, ...) \
+  if(verbose) { PF(x, __VA_ARGS__); }
+#define E(f, s, ...) \
+  if(!(f)) { \
+    PF("ERROR " s, __VA_ARGS__); \
+    return 1; \
+  }
 #ifdef NOFOPENX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -47,17 +58,6 @@
   E(fp = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
     force ? "writing" : "creation", strerror(errno));
 #endif
-#define P(x) fputs(x "\n", stderr)
-#define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-#define PV(x) \
-  if(verbose) { P(x); }
-#define PFV(x, ...) \
-  if(verbose) { PF(x, __VA_ARGS__); }
-#define E(f, s, ...) \
-  if(!(f)) { \
-    PF("ERROR " s, __VA_ARGS__); \
-    return 1; \
-  }
 #define HELP \
   P("Usage:\n" \
     INEXT "2" OUTEXT " [-bfv-] infile." INEXT " ...\n" \
