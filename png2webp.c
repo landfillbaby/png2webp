@@ -6,10 +6,10 @@
 #define INEXT Z
 #define OUTEXT "webp"
 #include "png2webp.h"
-static FILE *fd;
+static FILE *fp;
 static int w(const uint8_t *d, size_t s, const WebPPicture *x) {
   (void)x;
-  return s ? fwrite(d, s, 1, fd) : 1;
+  return s ? fwrite(d, s, 1, fp) : 1;
 }
 int main(int argc, char **argv) {
   GETARGS
@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 #ifdef PAM
     pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
     struct pam i;
-    pnm_readpaminit(fd, &i, PAM_STRUCT_SIZE(opacity_plane));
+    pnm_readpaminit(fp, &i, PAM_STRUCT_SIZE(opacity_plane));
     E(i.visual, "nonstandard tuple type: \"%s\"", i.tuple_type);
     tuple *r = pnm_allocpamrow(&i);
 #else
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     PF("PNG info warning: %s", i.message); \
     if(d) { i.warning_or_error = 0; } \
   }
-    EP(png_image_begin_read_from_stdio(&i, fd), "info", 1);
+    EP(png_image_begin_read_from_stdio(&i, fp), "info", 1);
     if(i.format & PNG_FORMAT_FLAG_LINEAR) {
       P("Warning: input PNG is 16bpc, will be downsampled to 8bpc");
     }

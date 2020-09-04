@@ -14,7 +14,7 @@ const struct WebPPicture *const, uint32_t *const);
 #define OUTEXT Z
 #include "webp2png.h"
 int main(int argc, char **argv) {
-  FILE *fd;
+  FILE *fp;
   GETARGS
   while(1) {
     WebPDecoderConfig c = {
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 #define IDEC_BUFSIZE 65536
 #endif
     uint8_t i[IDEC_BUFSIZE];
-    int l = fread(i, 1, IDEC_BUFSIZE, fd);
+    int l = fread(i, 1, IDEC_BUFSIZE, fp);
     char *k[] = {"out of RAM",		"invalid params", "bitstream broke",
 		 "unsupported feature", "suspended",	  "you cancelled it",
 		 "not enough data"};
@@ -58,16 +58,16 @@ int main(int argc, char **argv) {
     WebPIDecoder *d;
     E(d = WebPIDecode(i, l, &c), "initializing WebP decoder: 1 (%s)", k[0]);
     for(int x = l; (r = WebPIAppend(d, i, x)); l += x) {
-      E(r == 5 && !feof(fd), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
+      E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
 	r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
-      x = fread(i, 1, IDEC_BUFSIZE, fd);
+      x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
     PFV("Size: %u bytes (%.17g bpp)", l, (l * 8.) / (W * H));
     GETOUTFILE
 #define D c.output.u.RGBA
 #ifdef PAM
-    fprintf(fd,
+    fprintf(fp,
 	    A ? "P7\n"
 		"WIDTH %u\n"
 		"HEIGHT %u\n"
@@ -79,10 +79,10 @@ int main(int argc, char **argv) {
 		"%u %u\n"
 		"255\n",
 	    W, H);
-    fwrite(D.rgba, D.size, 1, fd);
+    fwrite(D.rgba, D.size, 1, fp);
 #else
     png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
-    E(png_image_write_to_stdio(&o, fd, 0, D.rgba, 0, 0), "writing PNG: %s",
+    E(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
       o.message);
     if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
     // TODO: PNG OUTPUT INFO

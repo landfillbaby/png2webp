@@ -31,20 +31,20 @@
 #include <sys/stat.h>
 #define OPENW \
   PFV("%scoding \"%s\"...", "En", outname); \
-  int rawfd = O(open)(outname, \
-		      O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
-			  (force ? 0 : O(O_EXCL)), \
-		      S_IRUSR | S_IWUSR); \
-  E(rawfd != -1, "opening \"%s\" for %s: %s", outname, \
+  int fd = O(open)(outname, \
+		   O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
+		       (force ? 0 : O(O_EXCL)), \
+		   S_IRUSR | S_IWUSR); \
+  E(fd != -1, "opening \"%s\" for %s: %s", outname, \
     force ? "writing" : "creation", strerror(errno)); \
-  E(fd = O(fdopen)(rawfd, "wb"), "opening \"%s\" for %s: %s", outname, \
+  E(fp = O(fdopen)(fd, "wb"), "opening \"%s\" for %s: %s", outname, \
     force ? "writing" : "creation", strerror(errno));
 #else
 #define OPENW \
   char wx[] = "wbx"; \
   if(force) { wx[2] = 0; } \
   PFV("%scoding \"%s\"...", "En", outname); \
-  E(fd = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
+  E(fp = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
     force ? "writing" : "creation", strerror(errno));
 #endif
 #define P(x) fputs(x "\n", stderr)
@@ -83,7 +83,7 @@
   if((unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
     if(O(isatty)(x)) { HELP } \
     E(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
-    fd = std##y; \
+    fp = std##y; \
     usestd##y = 1; \
   }
 #define FLAGLIST \
@@ -138,20 +138,20 @@
   if(!usestdin) { \
     if(!argc) { HELP } \
     PFV("%scoding \"%s\"...", "De", *argv); \
-    E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+    E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
       strerror(errno)); \
   }
 #define GETINFILE \
   if(!usestdout) { \
-    E(!fclose(fd), "closing %s: %s", outname, strerror(errno)); \
+    E(!fclose(fp), "closing %s: %s", outname, strerror(errno)); \
   } \
   if(usepipe || !--argc) { return 0; } \
   argv++; \
   PFV("%scoding \"%s\"...", "De", *argv); \
-  E(fd = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+  E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
     strerror(errno));
 #define GETOUTFILE \
-  if(!usestdin) { E(!fclose(fd), "closing %s: %s", *argv, strerror(errno)); } \
+  if(!usestdin) { E(!fclose(fp), "closing %s: %s", *argv, strerror(errno)); } \
   if(usepipe) { \
     B(1, out) else { outname = argv[1]; } \
   } else { \
