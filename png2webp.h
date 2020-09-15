@@ -11,14 +11,12 @@
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
+#include <fcntl.h>
 #include <io.h>
 #define strcasecmp _stricmp
 #define O(x) _##x
 #define S_IRUSR _S_IREAD
 #define S_IWUSR _S_IWRITE
-#ifndef NOFOPENX
-#define NOFOPENX
-#endif
 #else
 #include <strings.h>
 #include <unistd.h>
@@ -37,6 +35,11 @@
     PF("ERROR " s, __VA_ARGS__); \
     return 1; \
   }
+#if __STDC_VERSION__ < 201112L
+#ifndef NOFOPENX
+#define NOFOPENX
+#endif
+#endif
 #ifdef NOFOPENX
 #include <fcntl.h>
 #include <sys/stat.h>

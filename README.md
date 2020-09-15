@@ -56,9 +56,10 @@ and put the errors in a code block in the comment box:
 ## Compilation flags
 Define these as preprocessor macros:
 
-`NOFOPENX`: Defined automatically on Windows. If C11's fopen() "wbx" parameter
-isn't supported on your system, problems happen without `-f`.
-(Errors on Windows, other platforms may overwrite.)
+`NOFOPENX`: Defined automatically on compilers without C11 support.
+If C11's fopen() "wbx" parameter isn't supported on your system,
+problems happen without `-f`.
+(Errors on Windows/MSVC, other platforms may overwrite.)
 This attempts a workaround with `open()` and `fdopen()`.
 Honestly a standard from 9 years ago should be supported by now! :(
 
