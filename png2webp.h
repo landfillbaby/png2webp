@@ -40,6 +40,9 @@
 #define NOFOPENX
 #endif
 #endif
+#define EO(x) \
+  E(x, "opening \"%s\" for %s: %s", outname, force ? "writing" : "creation", \
+    strerror(errno));
 #ifdef NOFOPENX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -49,17 +52,14 @@
 		   O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
 		       (force ? 0 : O(O_EXCL)), \
 		   S_IRUSR | S_IWUSR); \
-  E(fd != -1, "opening \"%s\" for %s: %s", outname, \
-    force ? "writing" : "creation", strerror(errno)); \
-  E(fp = O(fdopen)(fd, "wb"), "opening \"%s\" for %s: %s", outname, \
-    force ? "writing" : "creation", strerror(errno));
+  EO(fd != -1); \
+  EO(fp = O(fdopen)(fd, "wb"));
 #else
 #define OPENW \
   char wx[] = "wbx"; \
   if(force) { wx[2] = 0; } \
   PFV("%scoding \"%s\"...", "En", outname); \
-  E(fp = fopen(outname, wx), "opening \"%s\" for %s: %s", outname, \
-    force ? "writing" : "creation", strerror(errno));
+  EO(fp = fopen(outname, wx));
 #endif
 #define HELP \
   P("Usage:\n" \
