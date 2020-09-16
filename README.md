@@ -35,6 +35,16 @@ requires several different programs
 `webp2png` has the same syntax.
 
 # Compiling
+## Windows with Visual Studio / MSVC
+* Download the latest release sources of libpng, libwebp, and zlib,
+and extract them to this directory.
+* Rename the folders to remove the version numbers.
+* Search the start menu for "Native Tools Command Prompt",
+and select the appropriate one for your system.
+* Run `compile_msvc.bat` from this prompt
+(you should be able to click and drag it into the window).
+
+## Other
 Just use your favourite C compiler:
 * Link against `libwebp` and `libpng` (in either order), or even compile them
 in at the same time for a tiny static executable.
@@ -45,7 +55,8 @@ For example: GCC, dynamically linked:
     gcc -O2 -o png2webp png2webp.c -lwebp -lpng
     gcc -O2 -o webp2png webp2png.c -lwebp -lpng
 
-If you get any warnings or errors, just
+## Problems?
+In either case, if you get any warnings or errors, just
 [open an issue](https://github.com/landfillbaby/png2webp/issues/new)
 and put the errors in a code block in the comment box:
 
