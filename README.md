@@ -34,6 +34,11 @@ requires several different programs
 
 `webp2png` has the same syntax.
 
+For drag-and-drop usage, the provided `.bat` (Windows) and `.sh` (Unix-like)
+wrappers do 2 things:
+* Specify `-bv --`.
+* Wait for user input if errors happen.
+
 # Compiling
 ## Windows with Visual Studio / MSVC
 * Download the latest release sources of libpng, libwebp, and zlib,
