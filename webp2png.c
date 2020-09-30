@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 #define IDEC_BUFSIZE 65536
 #endif
     uint8_t i[IDEC_BUFSIZE];
-    int l = fread(i, 1, IDEC_BUFSIZE, fp);
+    size_t l = fread(i, 1, IDEC_BUFSIZE, fp);
     char *k[] = {"out of RAM",		"invalid params", "bitstream broke",
 		 "unsupported feature", "suspended",	  "you cancelled it",
 		 "not enough data"};
@@ -57,13 +57,14 @@ int main(int argc, char **argv) {
     if(A) { c.output.colorspace = MODE_RGBA; }
     WebPIDecoder *d;
     E(d = WebPIDecode(i, l, &c), "initializing WebP decoder: 1 (%s)", k[0]);
-    for(int x = l; (r = WebPIAppend(d, i, x)); l += x) {
+    for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
       E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
 	r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
       x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
-    PFV("Size: %u bytes (%.17g bpp)", l, (l * 8.) / (W * H));
+    PFV("Size: %zu bytes (%.17g bpp)", l,
+	(l * 8.) / ((uint64_t)W * (uint64_t)H));
     GETOUTFILE
 #define D c.output.u.RGBA
 #ifdef PAM

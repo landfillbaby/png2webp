@@ -60,12 +60,12 @@ int main(int argc, char **argv) {
     if(255 % i.maxval) {
       PF("Warning: scaling from maxval %lu to 255", i.maxval);
     }
-    for(int y = 0; y < i.height; y++) {
+    for(uint32_t y = 0; y < (uint32_t)i.height; y++) {
       pnm_readpamrow(&i, r);
       pnm_scaletuplerow(&i, r, r, 255);
 #define A i.have_opacity
 #define D (i.depth > 2)
-      for(int x = 0; x < i.width; x++) {
+      for(uint32_t x = 0; x < (uint32_t)i.width; x++) {
 	o.argb[y * i.width + x] = ((A ? r[x][i.opacity_plane] : 255) << 24) |
 				  (r[x][0] << 16) | (r[x][D ? 1 : 0] << 8) |
 				  r[x][D ? 2 : 0];
@@ -108,8 +108,8 @@ int main(int argc, char **argv) {
 	"Precision bits: histogram=%u transform=%u cache=%u\n"
 	"Lossless features:%s%s%s%s\n"
 	"Colors: %s%u",
-	o.width, o.height,
-	s.coded_size, s.coded_size * 8. / (o.width * o.height),
+	o.width, o.height, s.coded_size,
+	(s.coded_size * 8.) / ((uint64_t)o.width * (uint64_t)o.height),
 	s.lossless_hdr_size, s.lossless_data_size,
 	A && WebPPictureHasTransparency(&o) ? "yes" : "no",
 	s.histogram_bits, s.transform_bits, s.cache_bits,
