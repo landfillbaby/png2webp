@@ -13,12 +13,10 @@
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
-#define strcasecmp _stricmp
 #define O(x) _##x
 #define S_IRUSR _S_IREAD
 #define S_IWUSR _S_IWRITE
 #else
-#include <strings.h>
 #include <unistd.h>
 #define _setmode(x, y) 0
 #define _O_BINARY 0
@@ -158,13 +156,18 @@
   if(usepipe) { \
     B(1, out) else { outname = argv[1]; } \
   } else { \
-    char *dot = strrchr(*argv, '.'); \
-    size_t len; \
-    if(dot && dot != *argv && !strcasecmp(dot + 1, INEXT)) { \
-      len = dot - *argv; \
-    } else { \
-      len = strlen(*argv); \
+    size_t len = 0, extlen = 0; \
+    while(argv[0][len]) { \
+      if(argv[0][len] == "." INEXT[extlen]) { \
+	extlen++; \
+	len++; \
+      } else if(extlen) { \
+	extlen = 0; \
+      } else { \
+	len++; \
+      } \
     } \
+    len -= extlen; \
     outname = realloc(outname, len + sizeof("." OUTEXT)); \
     memcpy(outname, *argv, len); \
     memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
