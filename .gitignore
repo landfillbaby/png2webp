@@ -53,6 +53,7 @@ dkms.conf
 
 # mine
 *.zip
+*.lnk
 /libpng/
 /libwebp/
 /zlib/

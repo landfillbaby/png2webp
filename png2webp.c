@@ -9,7 +9,7 @@
 static FILE *fp;
 static int w(const uint8_t *d, size_t s, const WebPPicture *x) {
   (void)x;
-  return s ? fwrite(d, s, 1, fp) : 1;
+  return s ? (int)fwrite(d, s, 1, fp) : 1;
 }
 int main(int argc, char **argv) {
   GETARGS
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 #define THREADLEVEL .thread_level = 1, // doesn't seem to affect output
 #endif
     GETOUTFILE
-    EW(WebPEncode(&(WebPConfig){1, 100, 6,	 // lossless,max
+    EW(WebPEncode(&(WebPConfig){1, 100, 6, // lossless,max
 				WEBP_HINT_GRAPH, /*see vp8l_enc.c#L1841
 				 should be default imo
 				 16bpp is only for alpha on lossy*/

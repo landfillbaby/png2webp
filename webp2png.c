@@ -34,9 +34,8 @@ int main(int argc, char **argv) {
 		 "not enough data"};
 #define F c.input
 #define A F.has_alpha
-    int r;
-    E(!(r = WebPGetFeatures(i, l, &F)), "reading WebP header: %d (%s)", r,
-      r & ~7 ? "???" : k[r - 1]);
+    int r = WebPGetFeatures(i, l, &F);
+    E(!r, "reading WebP header: %d (%s)", r, r & ~7 ? "???" : k[r - 1]);
     char *formats[] = {"undefined/mixed", "lossy", "lossless"};
 #define V F.format
 #define W F.width
@@ -55,8 +54,8 @@ int main(int argc, char **argv) {
 #endif
     E(!F.has_animation, "reading WebP header: 4 (%s: animation)", k[3]);
     if(A) { c.output.colorspace = MODE_RGBA; }
-    WebPIDecoder *d;
-    E(d = WebPIDecode(i, l, &c), "initializing WebP decoder: 1 (%s)", k[0]);
+    WebPIDecoder *d = WebPIDecode(i, l, &c);
+    E(d, "initializing WebP decoder: 1 (%s)", k[0]);
     for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
       E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
 	r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
