@@ -5,6 +5,12 @@
 #endif
 #define INEXT Z
 #define OUTEXT "webp"
+#define EXTRALETTERS "e"
+#define EXTRAHELP "-e: Keep RGB data on pixels where alpha is 0.\n"
+#define EXTRAFLAGS \
+  case 'e': \
+    exact = 1; \
+    break;
 #include "png2webp.h"
 static FILE *fp;
 static int w(const uint8_t *d, size_t s, const WebPPicture *x) {
@@ -12,6 +18,7 @@ static int w(const uint8_t *d, size_t s, const WebPPicture *x) {
   return s ? (int)fwrite(d, s, 1, fp) : 1;
 }
 int main(int argc, char **argv) {
+  bool exact = 0;
   GETARGS
   while(1) {
 #ifdef PAM
@@ -93,7 +100,7 @@ int main(int argc, char **argv) {
 				THREADLEVEL
 				.near_lossless = 100,
 				// ^ don't modify visible pixels
-				// .exact=1, // don't delete invisible pixels
+				.exact = exact, // see EXTRAHELP
 				.pass = 1, // unused, for WebPValidateConfig
 				.segments = 1}, // ditto
 		  &o),

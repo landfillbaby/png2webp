@@ -11,8 +11,8 @@ requires several different programs
 
 # Usage
 
-    png2webp [-bfv-] infile.png ...
-    png2webp [-pfv-] [{infile.png|-} [outfile.webp|-]]
+    png2webp [-befv-] infile.png ...
+    png2webp [-pefv-] [{infile.png|-} [outfile.webp|-]]
 
 `-b`: Default when at least 1 file is given.
     Work with many input files (Batch mode).
@@ -26,13 +26,16 @@ requires several different programs
     or explicitly as `-`.
     Will error if stdin/stdout is used and is a terminal.
 
+`-e`: Keep RGB data on pixels where alpha is 0.
+    Equivalent to `cwebp -z 9 -exact`.
+
 `-f`: Force overwrite of output files (has no effect on stdout).
 
 `-v`: Be verbose.
 
 `--`: Explicitly stop parsing options.
 
-`webp2png` has the same syntax.
+`webp2png` has the same syntax, but lacks `-e` as output is always exact.
 
 For drag-and-drop usage, the provided `.bat` (Windows) and `.sh` (Unix-like)
 wrappers do 2 things:

@@ -33,10 +33,13 @@
     PF("ERROR " s, __VA_ARGS__); \
     return 1; \
   }
-#if __STDC_VERSION__ < 201112L
-#ifndef NOFOPENX
-#define NOFOPENX
+#ifndef EXTRAHELP
+#define EXTRALETTERS
+#define EXTRAHELP
+#define EXTRAFLAGS
 #endif
+#if __STDC_VERSION__ < 201112L && !defined(NOFOPENX)
+#define NOFOPENX
 #endif
 #define EO(x) \
   E(x, "opening \"%s\" for %s: %s", outname, force ? "writing" : "creation", \
@@ -61,9 +64,9 @@
 #endif
 #define HELP \
   P("Usage:\n" \
-    INEXT "2" OUTEXT " [-bfv-] infile." INEXT " ...\n" \
-    INEXT "2" OUTEXT " [-pfv-] [{infile." INEXT "|-} [outfile." OUTEXT \
-    "|-]]\n\n" \
+    INEXT "2" OUTEXT " [-b" EXTRALETTERS "fv-] infile." INEXT " ...\n" \
+    INEXT "2" OUTEXT " [-p" EXTRALETTERS "fv-] [{infile." INEXT \
+    "|-} [outfile." OUTEXT "|-]]\n\n" \
     "-b: Default when at least 1 file is given.\n" \
     "    Work with many input files (Batch mode).\n" \
     "    Constructs output filenames by removing the \"." INEXT \
@@ -76,6 +79,7 @@
     "\" default to stdin and stdout respectively,\n" \
     "    or explicitly as \"-\".\n" \
     "    Will error if stdin/stdout is used and is a terminal.\n" \
+    EXTRAHELP \
     "-f: Force overwrite of output files (has no effect on stdout).\n" \
     "-v: Be verbose.\n" \
     "--: Explicitly stop parsing options."); \
@@ -93,6 +97,7 @@
     if(chosen) { HELP } \
     chosen = 1; \
     break; \
+    EXTRAFLAGS \
   case 'f': force = 1; break; \
   case 'v': \
     verbose = 1; \
@@ -100,7 +105,7 @@
 #ifdef USEGETOPT
 #define FLAGLOOP \
   int c; \
-  while((c = getopt(argc, argv, ":bpfv")) != -1) { \
+  while((c = getopt(argc, argv, ":bp" EXTRALETTERS "fv")) != -1) { \
     switch(c) { \
       FLAGLIST \
       default: HELP \
