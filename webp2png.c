@@ -68,17 +68,14 @@ int main(int argc, char **argv) {
 #define D c.output.u.RGBA
 #ifdef PAM
     fprintf(fp,
-	    A ? "P7\n"
-		"WIDTH %u\n"
-		"HEIGHT %u\n"
-		"DEPTH 4\n"
-		"MAXVAL 255\n"
-		"TUPLTYPE RGB_ALPHA\n"
-		"ENDHDR\n" :
-		"P6\n"
-		"%u %u\n"
-		"255\n",
-	    W, H);
+	    "P7\n"
+	    "WIDTH %u\n"
+	    "HEIGHT %u\n"
+	    "DEPTH 4\n"
+	    "MAXVAL 255\n"
+	    "TUPLTYPE RGB%s\n"
+	    "ENDHDR\n",
+	    W, H, A ? "_ALPHA" : "");
     fwrite(D.rgba, D.size, 1, fp);
 #else
 #ifdef USEADVANCEDPNG
