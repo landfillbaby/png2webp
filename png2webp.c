@@ -2,6 +2,23 @@
 #include <webp/encode.h>
 #ifdef PAM
 #include <pam.h>
+#define GETEXT \
+  if((argv[0][len + 1] | 32) != 'p') { \
+    len++; \
+    continue; \
+  } \
+  switch(argv[0][len + 2] | 32) { \
+    case 'b': \
+    case 'g': \
+    case 'p': \
+    case 'n': \
+    case 'a': break; \
+    default: len += 2; goto endgetext; \
+  } \
+  if((argv[0][len + 3] | 32) != 'm') { \
+    len += 3; \
+    continue; \
+  }
 #endif
 #define INEXT Z
 #define OUTEXT "webp"

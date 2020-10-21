@@ -145,23 +145,33 @@
   PFV("%scoding \"%s\"...", "De", *argv); \
   E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
     strerror(errno));
+#ifndef GETEXT
+#define GETEXT \
+  for(size_t extlen = 0; extlen < sizeof(INEXT) - 1; extlen++) { \
+    if((argv[0][len + extlen + 1] | 32) != INEXT[extlen]) { \
+      len += extlen + 1; \
+      goto endgetext; \
+  } }
+#endif
 #define GETOUTFILE \
   if(!usestdin) { E(!fclose(fp), "closing %s: %s", *argv, strerror(errno)); } \
   if(usepipe) { \
     B(1, out) else { outname = argv[1]; } \
   } else { \
-    size_t len = 0, extlen = 0; \
+    size_t len = 0; \
     while(argv[0][len]) { \
-      if(argv[0][len] == "." INEXT[extlen]) { \
-	extlen++; \
+      if(argv[0][len] != '.') { \
 	len++; \
-      } else if(extlen) { \
-	extlen = 0; \
-      } else { \
-	len++; \
+	continue; \
       } \
+      GETEXT \
+      if(argv[0][len + sizeof(INEXT)]) { \
+	len += sizeof(INEXT); \
+	continue; \
+      } \
+      break; \
+    endgetext:; \
     } \
-    len -= extlen; \
     outname = realloc(outname, len + sizeof("." OUTEXT)); \
     memcpy(outname, *argv, len); \
     memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
