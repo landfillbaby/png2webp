@@ -24,10 +24,8 @@
 #endif
 #define P(x) fputs(x "\n", stderr)
 #define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-#define PV(x) \
-  if(verbose) { P(x); }
-#define PFV(x, ...) \
-  if(verbose) { PF(x, __VA_ARGS__); }
+#define PV(x) if(verbose) { P(x); }
+#define PFV(x, ...) if(verbose) { PF(x, __VA_ARGS__); }
 #define E(f, s, ...) \
   if(!(f)) { \
     PF("ERROR " s, __VA_ARGS__); \
@@ -38,13 +36,9 @@
 #define EXTRAHELP
 #define EXTRAFLAGS
 #endif
-#if __STDC_VERSION__ < 201112L && !defined(NOFOPENX)
-#define NOFOPENX
-#endif
-#define EO(x) \
-  E(x, "opening \"%s\" for %s: %s", outname, force ? "writing" : "creation", \
-    strerror(errno));
-#ifdef NOFOPENX
+#define EO(x) E(x, "opening \"%s\" for %s: %s", outname, \
+    force ? "writing" : "creation", strerror(errno));
+#if __STDC_VERSION__ < 201112L || defined(NOFOPENX)
 #include <fcntl.h>
 #include <sys/stat.h>
 #define OPENW \
@@ -97,11 +91,9 @@
     if(chosen) { HELP } \
     chosen = 1; \
     break; \
-    EXTRAFLAGS \
+  EXTRAFLAGS \
   case 'f': force = 1; break; \
-  case 'v': \
-    verbose = 1; \
-    break;
+  case 'v': verbose = 1; break;
 #ifdef USEGETOPT
 #define FLAGLOOP \
   int c; \
@@ -109,8 +101,7 @@
     switch(c) { \
       FLAGLIST \
       default: HELP \
-    } \
-  } \
+  } } \
   argc -= optind; \
   argv += optind;
 #else
@@ -123,12 +114,10 @@
 	  if(!argv[0][1]) { \
 	    argc--; \
 	    argv++; \
-	    goto endflagloop; /*break nested or fall through*/ \
+	    goto endflagloop; /* break nested or fall through */ \
 	  } \
 	default: HELP \
-      } \
-    } \
-  } \
+  } } } \
   endflagloop:
 #endif
 #define GETARGS \

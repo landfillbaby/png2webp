@@ -7,10 +7,7 @@
 #define OUTEXT "webp"
 #define EXTRALETTERS "e"
 #define EXTRAHELP "-e: Keep RGB data on pixels where alpha is 0.\n"
-#define EXTRAFLAGS \
-  case 'e': \
-    exact = 1; \
-    break;
+#define EXTRAFLAGS case 'e': exact = 1; break;
 #include "png2webp.h"
 static FILE *fp;
 static int w(const uint8_t *d, size_t s, const WebPPicture *x) {
@@ -77,8 +74,7 @@ int main(int argc, char **argv) {
 				  (r[x][0] << 16) | (r[x][D ? 1 : 0] << 8) |
 				  r[x][D ? 2 : 0];
 	// don't need &255, libnetpbm errors out on values >maxval
-      }
-    }
+    } }
     pnm_freepamrow(r);
 #else
 #ifdef USEADVANCEDPNG
@@ -127,5 +123,4 @@ int main(int argc, char **argv) {
 	C ? "" : ">", C ? C : 256);
     WebPPictureFree(&o);
     GETINFILE
-  }
-}
+} }

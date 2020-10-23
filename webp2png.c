@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 #else
 #ifdef USEADVANCEDPNG
     png_structp png_ptr =
-	png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
     E(png_ptr, "writing PNG: %s", k[0]);
     png_infop info_ptr = png_create_info_struct(png_ptr);
     E(info_ptr, "writing PNG: %s", k[0]);
@@ -114,5 +114,4 @@ int main(int argc, char **argv) {
 #endif
     WebPFreeDecBuffer(&c.output);
     GETINFILE
-  }
-}
+} }
