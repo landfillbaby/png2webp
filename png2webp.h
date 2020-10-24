@@ -51,10 +51,8 @@
   EO(fp = O(fdopen)(fd, "wb"));
 #else
 #define OPENW \
-  char wx[] = "wbx"; \
-  if(force) { wx[2] = 0; } \
   PFV("%scoding \"%s\"...", "En", outname); \
-  EO(fp = fopen(outname, wx));
+  EO(fp = fopen(outname, force ? "wb" : "wbx"));
 #endif
 #define HELP \
   P("Usage:\n" \
