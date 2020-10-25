@@ -29,9 +29,9 @@ int main(int argc, char **argv) {
 #endif
     uint8_t i[IDEC_BUFSIZE];
     size_t l = fread(i, 1, IDEC_BUFSIZE, fp);
-    char *k[] = {"out of RAM",		"invalid params", "bitstream broke",
-		 "unsupported feature", "suspended",	  "you cancelled it",
-		 "not enough data"};
+    char *k[] = {"out of RAM", "invalid params", "bitstream broke",
+	"unsupported feature", "suspended", "you cancelled it",
+	"not enough data"};
 #define F c.input
 #define A F.has_alpha
     int r = WebPGetFeatures(i, l, &F);
@@ -47,10 +47,10 @@ int main(int argc, char **argv) {
 	W, H, A ? "yes" : "no", (unsigned)V < 3 ? formats[V] : "???", V);
 #ifdef LOSSYISERROR
     E(V == 2,
-      "reading WebP header: 4 (%s:\n"
-      "                              compression is %s (%d),\n"
-      "                              instead of lossless (2))",
-      k[3], (unsigned)V < 3 ? formats[V] : "???", V);
+	"reading WebP header: 4 (%s:\n"
+	"                              compression is %s (%d),\n"
+	"                              instead of lossless (2))",
+	k[3], (unsigned)V < 3 ? formats[V] : "???", V);
 #endif
     E(!F.has_animation, "reading WebP header: 4 (%s: animation)", k[3]);
     if(A) { c.output.colorspace = MODE_RGBA; }
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     E(d, "initializing WebP decoder: 1 (%s)", k[0]);
     for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
       E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
-	r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
+	  r == 5 ? k[6] : (r & ~7 ? "???" : k[r - 1]));
       x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
@@ -68,14 +68,14 @@ int main(int argc, char **argv) {
 #define D c.output.u.RGBA
 #ifdef PAM
     fprintf(fp,
-	    "P7\n"
-	    "WIDTH %u\n"
-	    "HEIGHT %u\n"
-	    "DEPTH 4\n"
-	    "MAXVAL 255\n"
-	    "TUPLTYPE RGB%s\n"
-	    "ENDHDR\n",
-	    W, H, A ? "_ALPHA" : "");
+	"P7\n"
+	"WIDTH %u\n"
+	"HEIGHT %u\n"
+	"DEPTH 4\n"
+	"MAXVAL 255\n"
+	"TUPLTYPE RGB%s\n"
+	"ENDHDR\n",
+	W, H, A ? "_ALPHA" : "");
     fwrite(D.rgba, D.size, 1, fp);
 #else
 #ifdef USEADVANCEDPNG
@@ -93,9 +93,8 @@ int main(int argc, char **argv) {
     png_set_compression_level(png_ptr, 9);
     // png_set_compression_memlevel(png_ptr, 9);
     png_set_IHDR(png_ptr, info_ptr, W, H, 8,
-		 A ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB,
-		 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
-		 PNG_FILTER_TYPE_DEFAULT);
+	A ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+	PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     png_write_info(png_ptr, info_ptr);
     png_bytep px = D.rgba;
     for(uint32_t y = 0; y < (uint32_t)H; y++) {
@@ -107,7 +106,7 @@ int main(int argc, char **argv) {
 #else
     png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
     E(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
-      o.message);
+	o.message);
     if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
 #endif
     // TODO: PNG OUTPUT INFO

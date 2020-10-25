@@ -43,17 +43,14 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #define OPENW \
-  PFV("%scoding \"%s\"...", "En", outname); \
   int fd = O(open)(outname, \
-		   O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
-		       (force ? 0 : O(O_EXCL)), \
-		   S_IRUSR | S_IWUSR); \
+      O(O_WRONLY) | O(O_CREAT) | _O_BINARY | O(O_TRUNC) | \
+	  (force ? 0 : O(O_EXCL)), \
+      S_IRUSR | S_IWUSR); \
   EO(fd != -1); \
   EO(fp = O(fdopen)(fd, "wb"));
 #else
-#define OPENW \
-  PFV("%scoding \"%s\"...", "En", outname); \
-  EO(fp = fopen(outname, force ? "wb" : "wbx"));
+#define OPENW EO(fp = fopen(outname, force ? "wb" : "wbx"));
 #endif
 #define HELP \
   P(INEXT "2" OUTEXT " " VERSION "\n\n" \
@@ -120,6 +117,10 @@
   } } } \
   endflagloop:
 #endif
+#define OPENR \
+  PFV("%scoding \"%s\"...", "De", *argv); \
+  E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+      strerror(errno));
 #define GETARGS \
   bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
        chosen = 0; \
@@ -132,19 +133,9 @@
   } \
   if(!usestdin) { \
     if(!argc) { HELP } \
-    PFV("%scoding \"%s\"...", "De", *argv); \
-    E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
-      strerror(errno)); \
+    OPENR \
   }
-#define GETINFILE \
-  if(!usestdout) { \
-    E(!fclose(fp), "closing %s: %s", outname, strerror(errno)); \
-  } \
-  if(usepipe || !--argc) { return 0; } \
-  argv++; \
-  PFV("%scoding \"%s\"...", "De", *argv); \
-  E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
-    strerror(errno));
+#define EC(x) E(!fclose(fp), "closing %s: %s", x, strerror(errno))
 #ifndef GETEXT
 #define GETEXT \
   for(size_t extlen = 0; extlen < sizeof(INEXT) - 1; extlen++) { \
@@ -154,7 +145,7 @@
   } }
 #endif
 #define GETOUTFILE \
-  if(!usestdin) { E(!fclose(fp), "closing %s: %s", *argv, strerror(errno)); } \
+  if(!usestdin) { EC(*argv); } \
   if(usepipe) { \
     B(1, out) else { outname = argv[1]; } \
   } else { \
@@ -176,4 +167,12 @@
     memcpy(outname, *argv, len); \
     memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
   } \
-  if(!usestdout) { OPENW }
+  if(!usestdout) { \
+    PFV("%scoding \"%s\"...", "En", outname); \
+    OPENW \
+  }
+#define GETINFILE \
+  if(!usestdout) { EC(outname); } \
+  if(usepipe || !--argc) { return 0; } \
+  argv++; \
+  OPENR

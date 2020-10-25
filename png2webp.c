@@ -63,19 +63,14 @@ int main(int argc, char **argv) {
     WebPPicture o = {1, .width = i.width, i.height, .writer = w};
     WebPAuxStats s;
     if(verbose) { o.stats = &s; }
-    // progress_hook only reports 1,5,90,100 for lossless
+    // progress_hook only reports 1, 5, 90, 100 for lossless
 #define EW(f, s) \
   E(f, "%sing WebP: %s (%d)", s, es[o.error_code - 1], o.error_code)
     char *es[VP8_ENC_ERROR_LAST - 1] = {"out of RAM",
-					"out of RAM flushing bitstream",
-					"something was null",
-					"broken config",
-					"image too big (max. 16383x16383 px)",
-					"partition >512KiB",
-					"partition >16MiB",
-					"couldn't write",
-					"output >4GiB",
-					"you cancelled it"};
+	"out of RAM flushing bitstream", "something was null", "broken config",
+	"image too big (max. 16383x16383 px)", "partition >512KiB",
+	"partition >16MiB", "couldn't write", "output >4GiB",
+	"you cancelled it"};
     EW(WebPPictureAlloc(&o), "allocat");
 #ifdef PAM
     if(255 % i.maxval) {
@@ -88,8 +83,7 @@ int main(int argc, char **argv) {
 #define D (i.depth > 2)
       for(uint32_t x = 0; x < (uint32_t)i.width; x++) {
 	o.argb[y * i.width + x] = ((A ? r[x][i.opacity_plane] : 255) << 24) |
-				  (r[x][0] << 16) | (r[x][D ? 1 : 0] << 8) |
-				  r[x][D ? 2 : 0];
+	    (r[x][0] << 16) | (r[x][D ? 1 : 0] << 8) | r[x][D ? 2 : 0];
 	// don't need &255, libnetpbm errors out on values >maxval
     } }
     pnm_freepamrow(r);
@@ -106,18 +100,18 @@ int main(int argc, char **argv) {
 #define THREADLEVEL .thread_level = 1, // doesn't seem to affect output
 #endif
     GETOUTFILE
-    EW(WebPEncode(&(WebPConfig){1, 100, 6, // lossless,max
-				WEBP_HINT_GRAPH, /*see vp8l_enc.c#L1841
-				 should be default imo
-				 16bpp is only for alpha on lossy*/
-				THREADLEVEL
-				.near_lossless = 100,
-				// ^ don't modify visible pixels
-				.exact = exact, // see EXTRAHELP
-				.pass = 1, // unused, for WebPValidateConfig
-				.segments = 1}, // ditto
-		  &o),
-       "encod");
+    EW(WebPEncode(
+	   &(WebPConfig){
+	       1, 100, 6, // lossless, max
+	       WEBP_HINT_GRAPH, /* see vp8l_enc.c#L1841
+		should be default imo, 16bpp is only for alpha on lossy */
+	       THREADLEVEL
+	       .near_lossless = 100, // don't modify visible pixels
+	       .exact = exact, // see EXTRAHELP
+	       .pass = 1, .segments = 1 // unused, for WebPValidateConfig
+	   },
+	   &o),
+	"encod");
 #define F s.lossless_features
 #define C s.palette_size
     PFV("Output WebP info:\n"
