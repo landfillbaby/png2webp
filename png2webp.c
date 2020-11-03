@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
 	"Lossless features:%s%s%s%s\n"
 	"Colors: %s%u",
 	o.width, o.height, s.coded_size,
-	(s.coded_size * 8.) / ((uint64_t)o.width * (uint64_t)o.height),
+	(s.coded_size * 8.) / ((uint32_t)o.width * (uint32_t)o.height),
 	s.lossless_hdr_size, s.lossless_data_size,
 	A && WebPPictureHasTransparency(&o) ? "yes" : "no",
 	s.histogram_bits, s.transform_bits, s.cache_bits,
