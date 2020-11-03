@@ -64,14 +64,13 @@ int main(int argc, char **argv) {
     WebPAuxStats s;
     if(verbose) { o.stats = &s; }
     // progress_hook only reports 1, 5, 90, 100 for lossless
-#define EW(f, s) \
-  E(f, "%sing WebP: %s (%d)", s, es[o.error_code - 1], o.error_code)
     char *es[VP8_ENC_ERROR_LAST - 1] = {"out of RAM",
 	"out of RAM flushing bitstream", "something was null", "broken config",
 	"image too big (max. 16383x16383 px)", "partition >512KiB",
 	"partition >16MiB", "couldn't write", "output >4GiB",
 	"you cancelled it"};
-    EW(WebPPictureAlloc(&o), "allocat");
+    E(WebPPictureAlloc(&o), "%sing WebP: %s (%d)", "allocat",
+	es[o.error_code - 1], o.error_code);
 #ifdef PAM
     if(255 % i.maxval) {
       PF("Warning: scaling from maxval %lu to 255", i.maxval);
@@ -100,7 +99,7 @@ int main(int argc, char **argv) {
 #define THREADLEVEL .thread_level = 1, // doesn't seem to affect output
 #endif
     GETOUTFILE
-    EW(WebPEncode(
+    ED(WebPEncode(
 	   &(WebPConfig){
 	       1, 100, 6, // lossless, max
 	       WEBP_HINT_GRAPH, /* see vp8l_enc.c#L1841
@@ -111,7 +110,7 @@ int main(int argc, char **argv) {
 	       .pass = 1, .segments = 1 // unused, for WebPValidateConfig
 	   },
 	   &o),
-	"encod");
+	"%sing WebP: %s (%d)", "encod", es[o.error_code - 1], o.error_code);
 #define F s.lossless_features
 #define C s.palette_size
     PFV("Output WebP info:\n"

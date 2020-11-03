@@ -32,6 +32,14 @@
     PF("ERROR " s, __VA_ARGS__); \
     return 1; \
   }
+#define Q(x) \
+  if(outnamealloced) { free(outname); } \
+  return x
+#define ED(f, s, ...) \
+  if(!(f)) { \
+    PF("ERROR " s, __VA_ARGS__); \
+    Q(1); \
+  }
 #ifndef EXTRAHELP
 #define EXTRALETTERS
 #define EXTRAHELP
@@ -123,8 +131,8 @@
       strerror(errno));
 #define GETARGS \
   bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
-       chosen = 0; \
-  char *outname = 0; \
+       chosen = 0, outnamealloced = 0; \
+  char *outname; \
   FLAGLOOP \
   if(!chosen && !argc) { usepipe = 1; } \
   if(usepipe) { \
@@ -163,7 +171,10 @@
       break; \
     endgetext:; \
     } \
-    outname = realloc(outname, len + sizeof("." OUTEXT)); \
+    outname = malloc(len + sizeof("." OUTEXT)); \
+    E(outname, "adding \"." OUTEXT "\" extension to \"%s\": out of RAM", \
+	*argv); \
+    outnamealloced = 1; \
     memcpy(outname, *argv, len); \
     memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
   } \
@@ -172,7 +183,13 @@
     OPENW \
   }
 #define GETINFILE \
-  if(!usestdout) { EC(outname); } \
+  if(!usestdout) { \
+    EC(outname); \
+    if(outnamealloced) { \
+      free(outname); \
+      outnamealloced = 0; \
+    } \
+  } \
   if(usepipe || !--argc) { return 0; } \
   argv++; \
   OPENR

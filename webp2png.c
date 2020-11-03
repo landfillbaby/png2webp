@@ -81,12 +81,12 @@ int main(int argc, char **argv) {
 #ifdef USEADVANCEDPNG
     png_structp png_ptr =
 	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    E(png_ptr, "writing PNG: %s", k[0]);
+    ED(png_ptr, "writing PNG: %s", k[0]);
     png_infop info_ptr = png_create_info_struct(png_ptr);
-    E(info_ptr, "writing PNG: %s", k[0]);
+    ED(info_ptr, "writing PNG: %s", k[0]);
 #ifdef PNG_SETJMP_SUPPORTED
     // E(!setjmp(png_jmpbuf(png_ptr)), "writing PNG: %s", "???");
-    if(setjmp(png_jmpbuf(png_ptr))) { return 1; }
+    if(setjmp(png_jmpbuf(png_ptr))) { Q(1); }
 #endif
     png_init_io(png_ptr, fp);
     png_set_filter(png_ptr, 0, PNG_ALL_FILTERS);
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     png_destroy_write_struct(&png_ptr, &info_ptr);
 #else
     png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
-    E(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
+    ED(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
 	o.message);
     if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
 #endif
