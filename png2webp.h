@@ -1,5 +1,5 @@
 // vi: sw=2
-#define VERSION "v0.4"
+#define VERSION "v0.5"
 #ifdef PAM
 #define Z "pam"
 #else
