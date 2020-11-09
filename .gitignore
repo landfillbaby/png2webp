@@ -57,3 +57,7 @@ dkms.conf
 /libpng/
 /libwebp/
 /zlib/
+/png2webp
+/webp2png
+/pam2webp
+/webp2pam

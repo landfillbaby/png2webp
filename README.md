@@ -51,17 +51,10 @@ and extract them to this directory.
 and select the appropriate one for your system.
 * Run `compile_msvc.bat` from this prompt
 (you should be able to click and drag it into the window).
+* Put the resulting `.exe`s somewhere on your `%PATH%`.
 
 ## Other
-Just use your favourite C compiler:
-* Link against `libwebp` and `libpng` (in either order), or even compile them
-in at the same time for a tiny static executable.
-* Turn on whatever optimization level you want (preferably more than none).
-
-For example: GCC, dynamically linked:
-
-    gcc -O2 -o png2webp png2webp.c -lwebp -lpng
-    gcc -O2 -o webp2png webp2png.c -lwebp -lpng
+Install `libwebp` and `libpng`, then just run `make install`.
 
 ## Problems?
 In either case, if you get any warnings or errors, just
@@ -95,10 +88,7 @@ This means no lossy VP8 code in static globally optimized builds!
 
 `PAM`: Read/write `netpbm` PAM files instead of PNGs.
 Link `pam2webp` against `libnetpbm` instead of `libpng`.
-`webp2pam` doesn't need `libnetpbm`, it constructs the file itself:
-PAM if alpha is used, PPM otherwise.
-They use and expect `.pam` file extensions even though they do PNMs too,
-because I wrote them as an afterthought.
+`webp2pam` doesn't need `libnetpbm`, it constructs the output file itself.
 
 # Why?
 I wanted a smaller, faster, and less platform dependent way to convert old
