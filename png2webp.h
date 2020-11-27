@@ -61,7 +61,7 @@
 #define OPENW EO(fp = fopen(outname, force ? "wb" : "wbx"));
 #endif
 #define HELP \
-  P(INEXT "2" OUTEXT " " VERSION "\n\n" \
+  P(INEXT "2" OUTEXT " " VERSION ", by Lucy Phipps\n\n" \
     "Usage:\n" \
     INEXT "2" OUTEXT " [-b" EXTRALETTERS "fv-] infile." INEXT " ...\n" \
     INEXT "2" OUTEXT " [-p" EXTRALETTERS "fv-] [{infile." INEXT \
