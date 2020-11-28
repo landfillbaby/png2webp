@@ -14,12 +14,14 @@ requires several different programs
     png2webp [-befv-] infile.png ...
     png2webp [-pefv-] [{infile.png|-} [outfile.webp|-]]
 
-`-b`: Default when at least 1 file is given.
+`-b`: Default when 3 or more files are given,
+    or when 1 or 2 are given and neither are `-`.
     Work with many input files (Batch mode).
     Constructs output filenames by removing the `.png` extension if possible,
     and appending `.webp`.
 
-`-p`: Default when no files are given.
+`-p`: Default when no files are given,
+    or when 1 or 2 are given and at least 1 is `-`.
     Work with a single file, allowing Piping from stdin or to stdout,
     or using a different output filename to the input.
     `infile.png` and `outfile.webp` default to stdin and stdout respectively,

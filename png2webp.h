@@ -1,5 +1,5 @@
 // vi: sw=2
-#define VERSION "v0.5"
+#define VERSION "v0.6"
 #ifdef PAM
 #define Z "pam"
 #else
@@ -66,16 +66,18 @@
     INEXT "2" OUTEXT " [-b" EXTRALETTERS "fv-] infile." INEXT " ...\n" \
     INEXT "2" OUTEXT " [-p" EXTRALETTERS "fv-] [{infile." INEXT \
     "|-} [outfile." OUTEXT "|-]]\n\n" \
-    "-b: Default when at least 1 file is given.\n" \
+    "-b: Default when 3 or more files are given,\n" \
+    "    or when 1 or 2 are given and neither are \"-\".\n" \
     "    Work with many input files (Batch mode).\n" \
-    "    Constructs output filenames by removing the \"." INEXT \
-    "\" extension if possible,\n" \
+    "    Constructs output filenames by removing the ." INEXT \
+    " extension if possible,\n" \
     "    and appending \"." OUTEXT "\".\n" \
-    "-p: Default when no files are given.\n" \
+    "-p: Default when no files are given,\n" \
+    "    or when 1 or 2 are given and at least 1 is \"-\".\n" \
     "    Work with a single file, allowing Piping from stdin or to stdout,\n" \
     "    or using a different output filename to the input.\n" \
-    "    \"infile." INEXT "\" and \"outfile." OUTEXT \
-    "\" default to stdin and stdout respectively,\n" \
+    "    infile." INEXT " and outfile." OUTEXT \
+    " default to stdin and stdout respectively,\n" \
     "    or explicitly as \"-\".\n" \
     "    Will error if stdin/stdout is used and is a terminal.\n" \
     EXTRAHELP \
@@ -83,12 +85,14 @@
     "-v: Be verbose.\n" \
     "--: Explicitly stop parsing options."); \
   return -1;
+#define URGC (unsigned)argc
 #define B(x, y) \
-  if((unsigned)argc <= x || (*argv[x] == '-' && !argv[x][1])) { \
+  if(!argc || x && usepipe && argc == 1 || \
+      (URGC > x && *argv[x] == '-' && !argv[x][1])) { \
     if(O(isatty)(x)) { HELP } \
-    E(_setmode(x, _O_BINARY) != -1, "setting std%s to binary mode", #y); \
-    fp = std##y; \
-    usestd##y = 1; \
+    E(_setmode(x, _O_BINARY) != -1, "setting %s to binary mode", #y); \
+    usepipe = 1; \
+    use##y = 1; \
   }
 #define FLAGLIST \
   case 'p': usepipe = 1; /* fall through */ \
@@ -125,24 +129,25 @@
   } } } \
   endflagloop:
 #endif
-#define OPENR \
-  PFV("%scoding \"%s\"...", "De", *argv); \
-  E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
-      strerror(errno));
+#define OPENR(x) \
+  PFV("%scoding %s ...", "De", x ? "stdin" : *argv); \
+  if(x) { \
+    fp = stdin; \
+  } else { \
+    E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
+	strerror(errno)); \
+  }
 #define GETARGS \
   bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
        chosen = 0, outnamealloced = 0; \
   char *outname; \
   FLAGLOOP \
-  if(!chosen && !argc) { usepipe = 1; } \
-  if(usepipe) { \
-    if(argc > 2) { HELP } \
-    B(0, in); \
+  if(chosen && ((usepipe && URGC > 2) || (!usepipe && !argc))) { HELP } \
+  if((!chosen && URGC < 3) || usepipe) { \
+    B(0, stdin); \
+    B(1, stdout); \
   } \
-  if(!usestdin) { \
-    if(!argc) { HELP } \
-    OPENR \
-  }
+  OPENR(usestdin);
 #define EC(x) E(!fclose(fp), "closing %s: %s", x, strerror(errno))
 #ifndef GETEXT
 #define GETEXT \
@@ -153,43 +158,43 @@
   } }
 #endif
 #define GETOUTFILE \
-  if(!usestdin) { EC(*argv); } \
-  if(usepipe) { \
-    B(1, out) else { outname = argv[1]; } \
+  EC(usestdin ? "stdin" : *argv); \
+  if(usestdout) { \
+    PFV("%scoding %s ...", "En", "stdout"); \
+    fp = stdout; \
   } else { \
-    size_t len = 0; \
-    while(argv[0][len]) { \
-      if(argv[0][len] != '.') { \
-	len++; \
-	continue; \
+    if(usepipe) { \
+      outname = argv[1]; \
+    } else { \
+      size_t len = 0; \
+      while(argv[0][len]) { \
+	if(argv[0][len] != '.') { \
+	  len++; \
+	  continue; \
+	} \
+	GETEXT \
+	if(argv[0][len + sizeof(INEXT)]) { \
+	  len += sizeof(INEXT); \
+	  continue; \
+	} \
+	break; \
+      endgetext:; \
       } \
-      GETEXT \
-      if(argv[0][len + sizeof(INEXT)]) { \
-	len += sizeof(INEXT); \
-	continue; \
-      } \
-      break; \
-    endgetext:; \
+      outname = malloc(len + sizeof("." OUTEXT)); \
+      E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv); \
+      outnamealloced = 1; \
+      memcpy(outname, *argv, len); \
+      memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
     } \
-    outname = malloc(len + sizeof("." OUTEXT)); \
-    E(outname, "adding \"." OUTEXT "\" extension to \"%s\": out of RAM", \
-	*argv); \
-    outnamealloced = 1; \
-    memcpy(outname, *argv, len); \
-    memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
-  } \
-  if(!usestdout) { \
-    PFV("%scoding \"%s\"...", "En", outname); \
+    PFV("%scoding %s ...", "En", outname); \
     OPENW \
   }
 #define GETINFILE \
-  if(!usestdout) { \
-    EC(outname); \
-    if(outnamealloced) { \
-      free(outname); \
-      outnamealloced = 0; \
-    } \
+  EC(usestdout ? "stdout" : outname); \
+  if(outnamealloced) { \
+    free(outname); \
+    outnamealloced = 0; \
   } \
   if(usepipe || !--argc) { return 0; } \
   argv++; \
-  OPENR
+  OPENR(0);
