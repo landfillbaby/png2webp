@@ -71,11 +71,11 @@ int main(int argc, char **argv) {
 	"P7\n"
 	"WIDTH %u\n"
 	"HEIGHT %u\n"
-	"DEPTH 4\n"
+	"DEPTH %c\n"
 	"MAXVAL 255\n"
 	"TUPLTYPE RGB%s\n"
 	"ENDHDR\n",
-	W, H, A ? "_ALPHA" : "");
+	W, H, A ? '4' : '3', A ? "_ALPHA" : "");
     fwrite(D.rgba, D.size, 1, fp);
 #else
 #ifdef USEADVANCEDPNG
