@@ -1,8 +1,9 @@
 #!/bin/sh
 "${0%.sh}" -bv -- "$@"
 ret=$?
-if $ret
+if [ $ret -ne 0 ]
 then
-  read -rsn1 -p'Press any key to continue'
-  exit $ret
+  echo -n 'Press enter to continue'
+  read -r duh
 fi
+exit $ret
