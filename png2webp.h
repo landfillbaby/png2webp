@@ -1,5 +1,6 @@
+// © 2020 Lucy Phipps; zlib license
 // vi: sw=2
-#define VERSION "v0.6"
+#define VERSION "v0.7"
 #ifdef PAM
 #define Z "pam"
 #else
@@ -25,15 +26,15 @@
 #endif
 #define P(x) fputs(x "\n", stderr)
 #define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-#define PV(x) if(verbose) { P(x); }
-#define PFV(x, ...) if(verbose) { PF(x, __VA_ARGS__); }
+#define PV(x) if(verbose) P(x);
+#define PFV(x, ...) if(verbose) PF(x, __VA_ARGS__);
 #define E(f, s, ...) \
   if(!(f)) { \
     PF("ERROR " s, __VA_ARGS__); \
     return 1; \
   }
 #define Q(x) \
-  if(outnamealloced) { free(outname); } \
+  if(outnamealloced) free(outname); \
   return x
 #define ED(f, s, ...) \
   if(!(f)) { \
@@ -66,34 +67,23 @@
     INEXT "2" OUTEXT " [-b" EXTRALETTERS "fv-] infile." INEXT " ...\n" \
     INEXT "2" OUTEXT " [-p" EXTRALETTERS "fv-] [{infile." INEXT \
     "|-} [outfile." OUTEXT "|-]]\n\n" \
-    "-b: Default when 3 or more files are given,\n" \
-    "    or when 1 or 2 are given and neither are \"-\".\n" \
-    "    Work with many input files (Batch mode).\n" \
+    "-b: Work with many input files (Batch mode).\n" \
     "    Constructs output filenames by removing the ." INEXT \
     " extension if possible,\n" \
     "    and appending \"." OUTEXT "\".\n" \
-    "-p: Default when no files are given,\n" \
-    "    or when 1 or 2 are given and at least 1 is \"-\".\n" \
-    "    Work with a single file, allowing Piping from stdin or to stdout,\n" \
+    "-p: Work with a single file, allowing Piping from stdin or to stdout,\n" \
     "    or using a different output filename to the input.\n" \
     "    infile." INEXT " and outfile." OUTEXT \
     " default to stdin and stdout respectively,\n" \
-    "    or explicitly as \"-\".\n" \
-    "    Will error if stdin/stdout is used and is a terminal.\n" \
+    "    or explicitly as \"-\"." \
+    " Will error if stdin/stdout is used and is a terminal.\n" \
     EXTRAHELP \
     "-f: Force overwrite of output files (has no effect on stdout).\n" \
     "-v: Be verbose.\n" \
-    "--: Explicitly stop parsing options."); \
+    "--: Explicitly stop parsing options.\n\n" \
+    "Without -b or -p, and with 1 or 2 filenames, there is some ambiguity.\n" \
+    "In this case it will tell you what its guess is."); \
   return -1;
-#define URGC (unsigned)argc
-#define B(x, y) \
-  if(!argc || x && usepipe && argc == 1 || \
-      (URGC > x && *argv[x] == '-' && !argv[x][1])) { \
-    if(O(isatty)(x)) { HELP } \
-    E(_setmode(x, _O_BINARY) != -1, "setting %s to binary mode", #y); \
-    usepipe = 1; \
-    use##y = 1; \
-  }
 #define FLAGLIST \
   case 'p': usepipe = 1; /* fall through */ \
   case 'b': \
@@ -106,18 +96,16 @@
 #ifdef USEGETOPT
 #define FLAGLOOP \
   int c; \
-  while((c = getopt(argc, argv, ":bp" EXTRALETTERS "fv")) != -1) { \
-    switch(c) { \
+  while((c = getopt(argc, argv, ":bp" EXTRALETTERS "fv")) != -1) switch(c) { \
       FLAGLIST \
       default: HELP \
-  } } \
+    } \
   argc -= optind; \
   argv += optind;
 #else
 #define FLAGLOOP \
-  while(--argc && **++argv == '-' && argv[0][1]) { \
-    while(*++*argv) { \
-      switch(**argv) { \
+  while(--argc && **++argv == '-' && argv[0][1]) \
+    while(*++*argv) switch(**argv) { \
 	FLAGLIST \
 	case '-': \
 	  if(!argv[0][1]) { \
@@ -126,36 +114,72 @@
 	    goto endflagloop; /* break nested or fall through */ \
 	  } \
 	default: HELP \
-  } } } \
+      } \
   endflagloop:
 #endif
 #define OPENR(x) \
   PFV("%scoding %s ...", "De", x ? "stdin" : *argv); \
-  if(x) { \
-    fp = stdin; \
-  } else { \
+  if(x) fp = stdin; \
+  else \
     E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, "reading", \
-	strerror(errno)); \
+	strerror(errno));
+#define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
+#define PIPECHK(x, y) \
+  if(use##y) { \
+    E((x && skipstdoutchk) || !O(isatty)(x), "%s is a terminal", #y); \
+    E(_setmode(x, _O_BINARY) != -1, "setting %s to binary mode", #y); \
   }
+#define URGC (unsigned)argc
 #define GETARGS \
   bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
-       chosen = 0, outnamealloced = 0; \
+       chosen = 0, outnamealloced = 0, skipstdoutchk = 0; \
   char *outname; \
   FLAGLOOP \
   if(chosen && ((usepipe && URGC > 2) || (!usepipe && !argc))) { HELP } \
-  if((!chosen && URGC < 3) || usepipe) { \
-    B(0, stdin); \
-    B(1, stdout); \
-  } \
+  if(usepipe) { \
+    usestdin = !argc || PIPEARG(0); \
+    usestdout = URGC < 2 || PIPEARG(1); \
+  } else if(!chosen && URGC < 3) { \
+    usestdin = !argc || PIPEARG(0); \
+    usestdout = (usestdin && URGC < 2) || (argc == 2 && PIPEARG(1)); \
+    usepipe = usestdin || usestdout; \
+    if(!usepipe) { \
+      PF("Warning: %d file%s given and neither -b or -p specified.", argc, \
+	  argc == 1 ? "" : "s"); \
+      if(argc == 1) { \
+	if(!O(isatty)(1)) usepipe = usestdout = skipstdoutchk = 1; \
+      } else /* argc == 2: -p if argv[1] ends in "." OUTEXT */ \
+	for(size_t len = 0; argv[1][len];) { \
+	  if(argv[1][len] != '.') { \
+	    len++; \
+	    continue; \
+	  } \
+	  for(size_t extlen = 0; extlen < sizeof(OUTEXT) - 1; extlen++) \
+	    if((argv[1][len + extlen + 1] | 32) != OUTEXT[extlen]) { \
+	      len += extlen + 1; \
+	      goto endtestext; \
+	    } \
+	  if(argv[1][len + sizeof(OUTEXT)]) { \
+	    len += sizeof(OUTEXT); \
+	    continue; \
+	  } \
+	  usepipe = 1; \
+	  break; \
+	endtestext:; \
+	} \
+      PF("Guessed -%c.", usepipe ? 'p' : 'b'); \
+  } } \
+  PIPECHK(0, stdin); \
+  PIPECHK(1, stdout); \
   OPENR(usestdin);
 #define EC(x) E(!fclose(fp), "closing %s: %s", x, strerror(errno))
 #ifndef GETEXT
 #define GETEXT \
-  for(size_t extlen = 0; extlen < sizeof(INEXT) - 1; extlen++) { \
+  for(size_t extlen = 0; extlen < sizeof(INEXT) - 1; extlen++) \
     if((argv[0][len + extlen + 1] | 32) != INEXT[extlen]) { \
       len += extlen + 1; \
       goto endgetext; \
-  } }
+    }
 #endif
 #define GETOUTFILE \
   EC(usestdin ? "stdin" : *argv); \
@@ -163,9 +187,8 @@
     PFV("%scoding %s ...", "En", "stdout"); \
     fp = stdout; \
   } else { \
-    if(usepipe) { \
-      outname = argv[1]; \
-    } else { \
+    if(usepipe) outname = argv[1]; \
+    else { \
       size_t len = 0; \
       while(argv[0][len]) { \
 	if(argv[0][len] != '.') { \
@@ -195,6 +218,6 @@
     free(outname); \
     outnamealloced = 0; \
   } \
-  if(usepipe || !--argc) { return 0; } \
+  if(usepipe || !--argc) return 0; \
   argv++; \
   OPENR(0);

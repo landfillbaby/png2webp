@@ -1,3 +1,4 @@
+// © 2020 Lucy Phipps; zlib license
 // vi: sw=2
 #include <webp/decode.h>
 /*
@@ -53,7 +54,7 @@ int main(int argc, char **argv) {
 	k[3], (unsigned)V < 3 ? formats[V] : "???", V);
 #endif
     E(!F.has_animation, "reading WebP header: 4 (%s: animation)", k[3]);
-    if(A) { c.output.colorspace = MODE_RGBA; }
+    if(A) c.output.colorspace = MODE_RGBA;
     WebPIDecoder *d = WebPIDecode(i, l, &c);
     E(d, "initializing WebP decoder: 1 (%s)", k[0]);
     for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
     png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
     ED(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
 	o.message);
-    if(o.warning_or_error) { PF("Warning writing PNG: %s", o.message); }
+    if(o.warning_or_error) PF("Warning writing PNG: %s", o.message);
 #endif
     // TODO: PNG OUTPUT INFO
 #endif

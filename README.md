@@ -14,19 +14,14 @@ requires several different programs
     png2webp [-befv-] infile.png ...
     png2webp [-pefv-] [{infile.png|-} [outfile.webp|-]]
 
-`-b`: Default when 3 or more files are given,
-    or when 1 or 2 are given and neither are `-`.
-    Work with many input files (Batch mode).
+`-b`: Work with many input files (Batch mode).
     Constructs output filenames by removing the `.png` extension if possible,
     and appending `.webp`.
 
-`-p`: Default when no files are given,
-    or when 1 or 2 are given and at least 1 is `-`.
-    Work with a single file, allowing Piping from stdin or to stdout,
+`-p`: Work with a single file, allowing Piping from stdin or to stdout,
     or using a different output filename to the input.
     `infile.png` and `outfile.webp` default to stdin and stdout respectively,
-    or explicitly as `-`.
-    Will error if stdin/stdout is used and is a terminal.
+    or explicitly as `-`. Will error if stdin/stdout is used and is a terminal.
 
 `-e`: Keep RGB data on pixels where alpha is 0.
     Equivalent to `cwebp -z 9 -exact`.
@@ -36,6 +31,9 @@ requires several different programs
 `-v`: Be verbose.
 
 `--`: Explicitly stop parsing options.
+
+Without `-b` or `-p`, and with 1 or 2 filenames, there is some ambiguity.
+In this case it will tell you what its guess is.
 
 `webp2png` has the same syntax, but lacks `-e` as output is always exact.
 
@@ -53,7 +51,7 @@ and extract them to this directory.
 and select the appropriate one for your system.
 * Run `compile_msvc.bat` from this prompt
 (you should be able to click and drag it into the window).
-* Put the resulting `.exe`s somewhere on your `%PATH%`.
+* Optionally put the resulting `.exe`s somewhere on your `%PATH%`.
 
 ## Other
 Install `libwebp` and `libpng`, then just run `make install`.
@@ -100,5 +98,5 @@ than having to use a wrapper script with `cwebp` or `imagemagick` or something.
 I don't care about lossy WebP stuff, so I wrote a program that doesn't encode
 it at all, and uses maximum compression by default.
 
-As stated above this makes very tiny static executables when globally optimized,
+As stated above this makes tiny static executables when globally optimized,
 for platforms like Windows that don't provide `libwebp` or `libpng`.

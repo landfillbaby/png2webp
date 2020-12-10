@@ -1,3 +1,4 @@
+// © 2020 Lucy Phipps; zlib license
 // vi: sw=2
 #include <webp/encode.h>
 #ifdef PAM
@@ -50,12 +51,11 @@ int main(int argc, char **argv) {
   E(f, "reading PNG %s: %s", s, i.message); \
   if(i.warning_or_error) { \
     PF("PNG info warning: %s", i.message); \
-    if(d) { i.warning_or_error = 0; } \
+    if(d) i.warning_or_error = 0; \
   }
     EP(png_image_begin_read_from_stdio(&i, fp), "info", 1);
-    if(i.format & PNG_FORMAT_FLAG_LINEAR) {
+    if(i.format & PNG_FORMAT_FLAG_LINEAR)
       P("Warning: input PNG is 16bpc, will be downsampled to 8bpc");
-    }
     bool A = !!(i.format & PNG_FORMAT_FLAG_ALPHA);
     i.format = (*(uint8_t *)&(uint16_t){1}) ? PNG_FORMAT_BGRA : PNG_FORMAT_ARGB;
 #endif
