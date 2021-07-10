@@ -21,7 +21,8 @@ requires several different programs
 `-p`: Work with a single file, allowing Piping from stdin or to stdout,
     or using a different output filename to the input.
     `infile.png` and `outfile.webp` default to stdin and stdout respectively,
-    or explicitly as `-`. Will error if stdin/stdout is used and is a terminal.
+    or explicitly as `-`.
+    Will show this message if stdin/stdout is used and is a terminal.
 
 `-e`: Keep RGB data on pixels where alpha is 0.
     Equivalent to `cwebp -z 9 -exact`.
