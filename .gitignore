@@ -52,11 +52,7 @@ Mkfile.old
 dkms.conf
 
 # mine
-*.zip
 *.lnk
-/libpng/
-/libwebp/
-/zlib/
 /png2webp
 /webp2png
 /pam2webp
