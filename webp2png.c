@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 	W, H, A ? '4' : '3', A ? "_ALPHA" : "");
     fwrite(D.rgba, D.size, 1, fp);
 #else
-#ifdef USEADVANCEDPNG
+    // TODO: PNG OUTPUT INFO
     png_structp png_ptr =
 	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
     ED(png_ptr, "writing PNG: %s", k[0]);
@@ -104,13 +104,6 @@ int main(int argc, char **argv) {
     }
     png_write_end(png_ptr, info_ptr);
     png_destroy_write_struct(&png_ptr, &info_ptr);
-#else
-    png_image o = {.version = 1, W, H, A ? PNG_FORMAT_RGBA : PNG_FORMAT_RGB};
-    ED(png_image_write_to_stdio(&o, fp, 0, D.rgba, 0, 0), "writing PNG: %s",
-	o.message);
-    if(o.warning_or_error) PF("Warning writing PNG: %s", o.message);
-#endif
-    // TODO: PNG OUTPUT INFO
 #endif
     WebPFreeDecBuffer(&c.output);
     GETINFILE
