@@ -10,8 +10,8 @@ all install-all: png2webp webp2png pam2webp webp2pam
 png2webp webp2png: LDLIBS += -lpng
 pam2webp webp2pam: CPPFLAGS += -DPAM
 pam2webp: LDLIBS += -lnetpbm
-png2webp pam2webp: png2webp.[ch]
-webp2png webp2pam: webp2png.[ch]
+png2webp pam2webp: png2webp.c png2webp.h
+webp2png webp2pam: webp2png.c webp2png.h
 png2webp webp2png pam2webp webp2pam:
 	$(LINK.c) $< $(LOADLIBES) -lwebp $(LDLIBS) -o $@
 install install-pam install-all:
