@@ -5,15 +5,21 @@
 #include <pam.h>
 #define INEXT "pam"
 #define X(x) ((argv[0][len - 2] | 32) == x)
-#define ISINEXT (len > 3 && EXTMASK(0, "\0 \xff ", ".p\xffm") && \
-	(X('b') || X('g') || X('p') || X('n') || X('a')))
+#define ISINEXT \
+	if(len > 3) { \
+		uint32_t ext, extmask, extmatch; \
+		memcpy(&ext, *argv + len - 4, 4); \
+		memcpy(&extmask, (char[4]){"\0 \xff "}, 4); \
+		memcpy(&extmatch, (char[4]){".p\xffm"}, 4); \
+		if((ext | extmask) == extmatch && (X('b') || X('g') || \
+			X('p') || X('n') || X('a'))) len -= 4; \
+	}
 #else
 #include <png.h>
 #define INEXT "png"
-#define ISINEXT ISPNG(0)
 #endif
 #define OUTEXT "webp"
-#define ISOUTEXT ISWEBP(1)
+#define OUTEXTCHK OUTEXT
 #define EXTRALETTERS "e"
 #define EXTRAHELP "-e: Keep RGB data on pixels where alpha is 0.\n"
 #define EXTRAFLAGS case 'e': exact = 1; break;
@@ -25,9 +31,10 @@ static int w(const uint8_t* d, size_t s, const WebPPicture* x) {
 }
 int main(int argc, char** argv) {
 #if !defined(PAM) && !defined(USEADVANCEDPNG)
-#define X U("\xAA\xBB\xCC\xDD")
-  E(X == 0xAABBCCDD || X == 0xDDCCBBAA,
-	"32-bit mixed-endianness (%X) not supported", X);
+  uint32_t endian;
+  memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
+  E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
+	"32-bit mixed-endianness (%X) not supported", endian);
 #endif
 #ifdef PAM
   pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
@@ -84,7 +91,7 @@ int main(int argc, char** argv) {
 #define D (i.depth > 2)
 	for(unsigned x = 0; x < W; x++)
 		o.argb[y * W + x] = ((A ? r[x][i.opacity_plane] : 255) << 24) |
-			(r[x][0] << 16) | (r[x][D] << 8) | r[x][D * 2];
+			(*r[x] << 16) | (r[x][D] << 8) | r[x][D * 2];
 	// don't need &255, libnetpbm errors out on values >maxval
     }
     pnm_freepamrow(r);

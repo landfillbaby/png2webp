@@ -18,16 +18,24 @@
 #define O(x) x
 #define M 0666
 #endif
-typedef union {
-	uint8_t x[4];
-	uint32_t y;
-} c32;
-#define U(...) ((c32){{__VA_ARGS__}}.y)
-#define EXTMASK(x, y, z) ((U(argv[x][len - 4], argv[x][len - 3], \
-	argv[x][len - 2], argv[x][len - 1]) | U(y)) == U(z))
-#define ISPNG(x) (len > 3 && EXTMASK(x, "\0   ", ".png"))
-#define ISWEBP(x) \
-	(len > 4 && argv[x][len - 5] == '.' && EXTMASK(x, "    ", "webp"))
+#ifndef ISINEXT
+#ifndef INEXTCHK
+#define INEXTCHK "." INEXT
+#endif
+#define ISINEXT \
+	if(len >= sizeof INEXT) { \
+		uint32_t ext, extmask, extmatch; \
+		memcpy(&ext, *argv + len - 4, 4); \
+		memcpy(&extmask, (char[4]){(sizeof INEXT > 4) * 32, 32, 32, \
+			32}, 4); \
+		memcpy(&extmatch, (char[4]){INEXTCHK}, 4); \
+		if((sizeof INEXT < 5 || argv[0][len - 5] == '.') && \
+			(ext | extmask) == extmatch) len -= sizeof INEXT; \
+	}
+#endif
+#ifndef OUTEXTCHK
+#define OUTEXTCHK "." OUTEXT
+#endif
 #define P(x) fputs(x "\n", stderr)
 #define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
 #define PV(x) if(verbose) P(x);
@@ -129,7 +137,7 @@ typedef union {
     usestdout = URGC < 2 || PIPEARG(1); \
   } else if(!chosen && URGC < 3) { \
     usestdin = !argc || PIPEARG(0); \
-    usestdout = (argc == 2 ? PIPEARG(1) : usestdin); \
+    usestdout = argc == 2 ? PIPEARG(1) : usestdin; \
     if(!(usepipe = usestdin || usestdout)) { \
 	PF("Warning: %d file%s given and neither -b or -p specified.", argc, \
 		argc == 1 ? "" : "s"); \
@@ -137,8 +145,16 @@ typedef union {
 		if(!O(isatty)(1)) usepipe = usestdout = skipstdoutchk = 1; \
 	} else { \
 		size_t len = strlen(argv[1]); \
-		usepipe = ISOUTEXT; \
-	} \
+		if(len >= sizeof OUTEXT) { \
+			uint32_t ext, extmask, extmatch; \
+			memcpy(&ext, argv[1] + len - 4, 4); \
+			memcpy(&extmask, (char[4]){(sizeof OUTEXT > 4) * 32, \
+				32, 32, 32}, 4); \
+			memcpy(&extmatch, (char[4]){OUTEXTCHK}, 4); \
+			usepipe = (sizeof OUTEXT < 5 || \
+					argv[1][len - 5] == '.') && \
+				(ext | extmask) == extmatch; \
+	}	} \
 	PF("Guessed -%c.", usepipe ? 'p' : 'b'); \
   } } \
   PIPECHK(0, stdin); \
@@ -154,12 +170,12 @@ typedef union {
     if(usepipe) outname = argv[1]; \
     else { \
 	size_t len = strlen(*argv); \
-	if(ISINEXT) len -= sizeof(INEXT); \
-	outname = malloc(len + sizeof("." OUTEXT)); \
+	ISINEXT; \
+	outname = malloc(len + sizeof "." OUTEXT); \
 	E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv); \
 	outnamealloced = 1; \
 	memcpy(outname, *argv, len); \
-	memcpy(outname + len, "." OUTEXT, sizeof("." OUTEXT)); \
+	memcpy(outname + len, "." OUTEXT, sizeof "." OUTEXT); \
     } \
     PFV("%scoding %s ...", "En", outname); \
     OPENW \

@@ -10,14 +10,12 @@ WEBP_EXTERN int WebPGetColorPalette( // declared in libwebp utils/utils.h
 const struct WebPPicture* const, uint32_t* const); */
 #include <webp/decode.h>
 #define INEXT "webp"
-#define ISINEXT ISWEBP(0)
+#define INEXTCHK INEXT
 #ifdef PAM
 #define OUTEXT "pam"
-#define ISOUTEXT (len > 3 && EXTMASK(1, "\0   ", ".pam"))
 #else
 #include <png.h>
 #define OUTEXT "png"
-#define ISOUTEXT ISPNG(1)
 #endif
 #include "webp2png.h"
 int main(int argc, char** argv) {
@@ -63,10 +61,10 @@ int main(int argc, char** argv) {
 #endif
     if(A) c.output.colorspace = MODE_RGBA;
     WebPIDecoder* d = WebPIDecode(i, l, &c);
-    E(d, "initializing WebP decoder: 1 (%s)", k[0]);
+    E(d, "initializing WebP decoder: 1 (%s)", *k);
     for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
 	E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
-		r == 5 ? k[6] : (r < 8 ? k[r - 1] : "???"));
+		r == 5 ? k[6] : r < 8 ? k[r - 1] : "???");
 	x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
@@ -81,9 +79,9 @@ int main(int argc, char** argv) {
     // TODO: PNG OUTPUT INFO
     png_structp png_ptr =
 	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    E(png_ptr, "writing PNG: %s", k[0]);
+    E(png_ptr, "writing PNG: %s", *k);
     png_infop info_ptr = png_create_info_struct(png_ptr);
-    E(info_ptr, "writing PNG: %s", k[0]);
+    E(info_ptr, "writing PNG: %s", *k);
 #ifdef PNG_SETJMP_SUPPORTED
     // E(!setjmp(png_jmpbuf(png_ptr)), "writing PNG: %s", "???");
     if(setjmp(png_jmpbuf(png_ptr))) return 1;
