@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
 	"%sing WebP: %s (%u)", "encod", es[o.error_code - 1], o.error_code);
 #define F s.lossless_features
 #define C s.palette_size
-    PFV("Output WebP info:\nDimensions: %u x %u\nSize: %u bytes (%.17g bpp)\n"
+    PFV("Output WebP info:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n"
 	"Header size: %u, image data size: %u\nUses alpha: %s\n"
 	"Precision bits: histogram=%u transform=%u cache=%u\n"
 	"Lossless features:%s%s%s%s\nColors: %s%u",

@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 	x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
-    PFV("Size: %zu bytes (%.17g bpp)", l, 8. * l / (uint32_t)(W * H));
+    PFV("Size: %zu bytes (%.15g bpp)", l, 8. * l / (uint32_t)(W * H));
     GETOUTFILE
 #define D c.output.u.RGBA
 #ifdef PAM
