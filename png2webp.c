@@ -89,10 +89,10 @@ int main(int argc, char** argv) {
 	pnm_scaletuplerow(&i, r, r, 255);
 #define A i.have_opacity
 #define D (i.depth > 2)
-	for(unsigned x = 0; x < W; x++)
-		o.argb[y * W + x] = ((A ? r[x][i.opacity_plane] : 255) << 24) |
-			(*r[x] << 16) | (r[x][D] << 8) | r[x][D * 2];
-	// don't need &255, libnetpbm errors out on values >maxval
+	for(unsigned x = 0; x < W; x++) o.argb[y * W + x] =
+		(((A ? r[x][i.opacity_plane] : 255) & 255) << 24) |
+		((*r[x] & 255) << 16) | ((r[x][D] & 255) << 8) |
+		(r[x][D * 2] & 255);
     }
     pnm_freepamrow(r);
 #else
