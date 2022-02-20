@@ -1,4 +1,4 @@
-// © 2020 Lucy Phipps; zlib license
+// anti-copyright Lucy Phipps 2020
 // vi: sw=2 tw=80
 #include <webp/encode.h>
 #ifdef PAM

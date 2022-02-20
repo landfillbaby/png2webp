@@ -1,4 +1,4 @@
-/* © 2020 Lucy Phipps; zlib license
+/* anti-copyright Lucy Phipps 2020
 vi: sw=2 tw=80
 TODO: Try to compress somewhat better
 Ideally should palette if <=256 colors (in order of appearance),
