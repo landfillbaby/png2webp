@@ -30,22 +30,21 @@ static int w(const uint8_t* d, size_t s, const WebPPicture* x) {
 	return s ? (int)fwrite(d, s, 1, fp) : 1;
 }
 int main(int argc, char** argv) {
-#if !defined(PAM) && !defined(USEADVANCEDPNG)
+#ifdef PAM
+  pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
+#elif !defined(USEADVANCEDPNG)
   uint32_t endian;
   memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
   E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
 	"32-bit mixed-endianness (%X) not supported", endian);
-#endif
-#ifdef PAM
-  pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
 #endif
   bool exact = 0;
   GETARGS
   for(;;) {
 #ifdef PAM
     struct pam i;
-    pnm_readpaminit(fp, &i, PAM_STRUCT_SIZE(opacity_plane));
-    E(i.visual, "nonstandard tuple type: \"%s\"", i.tuple_type);
+    pnm_readpaminit(fp, &i, PAM_STRUCT_SIZE(tuple_type));
+    E(i.depth < 5, "too many channels: %u (max. 4)", i.depth);
     E((unsigned)i.width < 16384 && (unsigned)i.height < 16384,
 	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height);
     if(255 % i.maxval) PF("Warning: scaling from maxval %lu to 255", i.maxval);
@@ -87,10 +86,10 @@ int main(int argc, char** argv) {
     for(unsigned y = 0; y < H; y++) {
 	pnm_readpamrow(&i, r);
 	pnm_scaletuplerow(&i, r, r, 255);
-#define A i.have_opacity
+#define A (~i.depth & 1)
 #define D (i.depth > 2)
 	for(unsigned x = 0; x < W; x++) o.argb[y * W + x] =
-		(((A ? r[x][i.opacity_plane] : 255) & 255) << 24) |
+		(((A ? r[x][i.depth - 1] : 255) & 255) << 24) |
 		((*r[x] & 255) << 16) | ((r[x][D] & 255) << 8) |
 		(r[x][D * 2] & 255);
     }

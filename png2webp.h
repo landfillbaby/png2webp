@@ -128,8 +128,8 @@
 #define URGC (unsigned)argc
 #define GETARGS \
   bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0, \
-	chosen = 0, outnamealloced = 0, skipstdoutchk = 0; \
-  char* outname; \
+	chosen = 0, skipstdoutchk = 0; \
+  char* outname = 0; \
   FLAGLOOP \
   if(chosen && (usepipe ? URGC > 2 : !argc)) { HELP } \
   if(usepipe) { \
@@ -173,7 +173,6 @@
 	ISINEXT; \
 	outname = malloc(len + sizeof "." OUTEXT); \
 	E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv); \
-	outnamealloced = 1; \
 	memcpy(outname, *argv, len); \
 	memcpy(outname + len, "." OUTEXT, sizeof "." OUTEXT); \
     } \
@@ -183,9 +182,9 @@
 #define GETINFILE \
 	EC(usestdout ? "stdout" : outname); \
 	if(usepipe || !--argc) return 0; \
-	if(outnamealloced) { \
+	if(outname) { \
 		free(outname); \
-		outnamealloced = 0; \
+		outname = 0; \
 	} \
 	argv++; \
 	OPENR(0);
