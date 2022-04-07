@@ -69,6 +69,8 @@ and put the errors in a code block in the comment box:
 ## Compilation flags
 Define these as preprocessor macros:
 
+`FROMWEBP`: Compile webp2png.
+
 `NOFOPENX`: If C11's fopen() "wbx" parameter isn't supported on your system,
 problems happen without `-f`: system errors, overwriting anyway, etc.
 It's undefined behaviour. This forces a workaround, used automatically

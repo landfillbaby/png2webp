@@ -1,4 +1,4 @@
-#TODO: pam, optimizations
+#TODO: zlib 1.2.12 hardware crc32, pam, optimizations
 SHELL = /bin/sh
 PREFIX ?= /usr/local
 INSTALL ?= install
@@ -83,17 +83,20 @@ LIBWEBPDEC_OBJS := libwebp/src/dec/alpha_dec.o libwebp/src/dec/buffer_dec.o \
 	libwebp/src/utils/quant_levels_dec_utils.o
 OBJS := png2webp.o webp2png.o ${LIBPNG_OBJS} ${ZLIB_OBJS} \
 	${LIBWEBPBASE_OBJS} ${LIBWEBPENC_OBJS} ${LIBWEBPDEC_OBJS}
-SRCS := ${OBJS:o=c}
+SRCS := png2webp.c ${LIBPNG_OBJS:o=c} ${ZLIB_OBJS:o=c} \
+	${LIBWEBPBASE_OBJS:o=c} ${LIBWEBPENC_OBJS:o=c} ${LIBWEBPDEC_OBJS:o=c}
 PROGS := png2webp.static webp2png.static
 .PHONY: all install clean
 all install: ${PROGS}
 png2webp.static: png2webp.o ${LIBWEBPENC_OBJS}
 webp2png.static: webp2png.o ${LIBWEBPDEC_OBJS}
+%.o: %.c
+	${COMPILE.c} ${OUTPUT_OPTION} $<
+webp2png.o: png2webp.c
+	${COMPILE.c} ${OUTPUT_OPTION} -o $@ -DFROMWEBP $<
 ${PROGS}: ${LIBPNG_OBJS} ${ZLIB_OBJS} ${LIBWEBPBASE_OBJS}
 	${LINK.o} $^ ${LOADLIBES} ${LDLIBS} -o $@
 install:
 	${INSTALL} $^ ${DESTDIR}${PREFIX}/bin/
 clean:
 	${RM} ${PROGS} ${OBJS}
-%.o: %.c
-	${COMPILE.c} ${OUTPUT_OPTION} $<
