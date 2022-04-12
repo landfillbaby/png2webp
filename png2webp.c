@@ -77,13 +77,13 @@ const struct WebPPicture* const, uint32_t* const); */
 #define P(x) fputs(x "\n", stderr)
 #define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
 // #define PV(x) if(verbose) P(x);
-#define PFV(...) if(verbose) PF(__VA_ARGS__);
+#define PFV(...) if(verbose) PF(__VA_ARGS__)
 #define E(f, ...) \
 	if(!(f)) { \
 		PF("ERROR " __VA_ARGS__); \
 		return 1; \
 	}
-#if __STDC_VERSION__ < 201112L || defined(NOFOPENX)
+#if __STDC_VERSION__ < 201112L || defined NOFOPENX
 #include <fcntl.h>
 #include <sys/stat.h>
 #endif
@@ -110,12 +110,12 @@ const struct WebPPicture* const, uint32_t* const); */
 	PFV("%scoding %s ...", "De", x ? "stdin" : *argv); \
 	if(x) fp = stdin; \
 	else E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
-		"reading", strerror(errno));
+		"reading", strerror(errno))
 #define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
 #define PIPECHK(x, y) \
   if(use##y) { \
 	if(!(x && skipstdoutchk) && O(isatty)(x)) { HELP } \
-	E(O(setmode)(x, _O_BINARY) != -1, "setting %s to binary mode", #y); \
+	E(O(setmode)(x, _O_BINARY) != -1, "setting %s to binary mode", #y) \
   }
 #define URGC (unsigned)argc
 #define EC(x) E(!fclose(fp), "closing %s: %s", x, strerror(errno))
@@ -132,11 +132,11 @@ int main(int argc, char** argv) {
 #else // FROMWEBP
 #ifdef PAM
   pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
-#elif !defined(USEADVANCEDPNG)
+#elif !defined USEADVANCEDPNG
   uint32_t endian;
   memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
   E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
-	"32-bit mixed-endianness (%X) not supported", endian);
+	"32-bit mixed-endianness (%X) not supported", endian)
 #endif
   bool exact = 0;
 #endif // FROMWEBP
@@ -151,11 +151,24 @@ int main(int argc, char** argv) {
     while(*++*argv) switch(**argv)
 #endif
     {
-	case 'p': usepipe = 1; // FALLTHRU
-	case 'b':
-		if(chosen) { HELP }
-		chosen = 1;
-		break;
+#ifdef __has_c_attribute
+#if __has_c_attribute(fallthrough)
+#define FALLTHRU [[fallthrough]]
+#endif
+#endif
+#if !defined FALLTHRU && defined __has_attribute
+#if __has_attribute(fallthrough)
+#define FALLTHRU __attribute__((fallthrough))
+#endif
+#endif
+#ifndef FALLTHRU
+#define FALLTHRU 0
+#endif
+      case 'p': usepipe = 1; FALLTHRU;
+      case 'b':
+	if(chosen) { HELP }
+	chosen = 1;
+	break;
 #ifndef FROMWEBP
 	case 'e': exact = 1; break;
 #endif
@@ -167,7 +180,8 @@ int main(int argc, char** argv) {
 		argc--;
 		argv++;
 		goto endflagloop;
-	  } // FALLTHRU
+	  }
+	  FALLTHRU;
 #endif
 	default: HELP
     }
@@ -201,9 +215,9 @@ endflagloop:
       } }
       PF("Guessed -%c.", usepipe ? 'p' : 'b');
   } }
-  PIPECHK(0, stdin);
-  PIPECHK(1, stdout);
-  OPENR(usestdin);
+  PIPECHK(0, stdin)
+  PIPECHK(1, stdout)
+  OPENR(usestdin)
   for(;;) {
 #ifdef FROMWEBP
     WebPDecoderConfig c = { // TODO: memset? WebPInitDecoderConfig?
@@ -223,7 +237,7 @@ endflagloop:
 #define F c.input
 #define A F.has_alpha
     VP8StatusCode r = WebPGetFeatures(i, l, &F);
-    E(!r, "reading WebP header: %u (%s)", r, r < 8 ? k[r - 1] : "???");
+    E(!r, "reading WebP header: %u (%s)", r, r < 8 ? k[r - 1] : "???")
 #ifdef LOSSYISERROR
 #define FORMATSTR
 #define GETFORMAT
@@ -239,16 +253,16 @@ endflagloop:
 #define H (unsigned)F.height
     PFV("Input WebP info:\nDimensions: %u x %u\nUses alpha: %s" FORMATSTR,
 	W, H, A ? "yes" : "no" GETFORMAT);
-    E(!F.has_animation, "reading WebP header: 4 (%s: " ANIMARGS);
+    E(!F.has_animation, "reading WebP header: 4 (%s: " ANIMARGS)
 #ifdef LOSSYISERROR
-    E(V == 2, "reading WebP header: 4 (%s: %sion)", k[3], "lossy compress");
+    E(V == 2, "reading WebP header: 4 (%s: %sion)", k[3], "lossy compress")
 #endif
     if(A) c.output.colorspace = MODE_RGBA;
     WebPIDecoder* d = WebPIDecode(i, l, &c);
-    E(d, "initializing WebP decoder: 1 (%s)", *k);
+    E(d, "initializing WebP decoder: 1 (%s)", *k)
     for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
 	E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
-		r == 5 ? k[6] : r < 8 ? k[r - 1] : "???");
+		r == 5 ? k[6] : r < 8 ? k[r - 1] : "???")
 	x = fread(i, 1, IDEC_BUFSIZE, fp);
     }
     WebPIDelete(d);
@@ -257,9 +271,9 @@ endflagloop:
 #ifdef PAM
     struct pam i;
     pnm_readpaminit(fp, &i, PAM_STRUCT_SIZE(tuple_type));
-    E(i.depth < 5, "too many channels: %u (max. 4)", i.depth);
+    E(i.depth < 5, "too many channels: %u (max. 4)", i.depth)
     E((unsigned)i.width < 16384 && (unsigned)i.height < 16384,
-	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height);
+	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height)
     if(255 % i.maxval) PF("Warning: scaling from maxval %lu to 255", i.maxval);
     tuple* r = pnm_allocpamrow(&i);
 #else
@@ -268,14 +282,14 @@ endflagloop:
 #else
     png_image i = {.version = PNG_IMAGE_VERSION}; // TODO: memset?
 #define EP(f, s, d) \
-	E(f, "reading PNG %s: %s", s, i.message); \
+	E(f, "reading PNG %s: %s", s, i.message) \
 	if(i.warning_or_error) { \
 		PF("PNG %s warning: %s", s, i.message); \
 		if(d) i.warning_or_error = 0; \
 	}
-    EP(png_image_begin_read_from_stdio(&i, fp), "info", 1);
+    EP(png_image_begin_read_from_stdio(&i, fp), "info", 1)
     E(i.width < 16384 && i.height < 16384,
-	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height);
+	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height)
     if(i.format & PNG_FORMAT_FLAG_LINEAR)
 	P("Warning: input PNG is 16bpc, will be downsampled to 8bpc");
     bool A = !!(i.format & PNG_FORMAT_FLAG_ALPHA);
@@ -294,7 +308,7 @@ endflagloop:
 	/* "image too big (max. 16383x16383 px)" */ "", "partition >512KiB",
 	"partition >16MiB", "couldn't write", "output >4GiB", "cancelled"};
     E(WebPPictureAlloc(&o), "%sing WebP: %s (%u)", "allocat",
-	es[o.error_code - 1], o.error_code);
+	es[o.error_code - 1], o.error_code)
 #ifdef PAM
     for(unsigned y = 0; y < H; y++) {
 	pnm_readpamrow(&i, r);
@@ -311,11 +325,11 @@ endflagloop:
 #ifdef USEADVANCEDPNG
 #error // TODO
 #else
-    EP(png_image_finish_read(&i, 0, o.argb, 0, 0), "data", 0);
+    EP(png_image_finish_read(&i, 0, o.argb, 0, 0), "data", 0)
 #endif
 #endif
 #endif // FROMWEBP
-    EC(usestdin ? "stdin" : *argv);
+    EC(usestdin ? "stdin" : *argv)
     if(usestdout) {
 	PFV("%scoding %s ...", "En", "stdout");
 	fp = stdout;
@@ -323,16 +337,16 @@ endflagloop:
       if(usepipe) outname = argv[1];
       else {
 	size_t len = strlen(*argv);
-	ISINEXT;
+	ISINEXT
 	outname = malloc(len + sizeof "." OUTEXT);
-	E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv);
+	E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv)
 	memcpy(outname, *argv, len);
 	memcpy(outname + len, "." OUTEXT, sizeof "." OUTEXT);
       }
       PFV("%scoding %s ...", "En", outname);
 #define EO(x) E(x, "opening \"%s\" for %s: %s", outname, \
 	force ? "writing" : "creation", strerror(errno))
-#if __STDC_VERSION__ < 201112L || defined(NOFOPENX)
+#if __STDC_VERSION__ < 201112L || defined NOFOPENX
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
@@ -344,9 +358,9 @@ endflagloop:
 	0666
 #endif
 	);
-      EO(fd != -1 && (fp = O(fdopen)(fd, "wb")));
+      EO(fd != -1 && (fp = O(fdopen)(fd, "wb")))
 #else
-      EO(fp = fopen(outname, force ? "wb" : "wbx"));
+      EO(fp = fopen(outname, force ? "wb" : "wbx"))
 #endif
     }
 #ifdef FROMWEBP
@@ -359,11 +373,11 @@ endflagloop:
     // TODO: PNG OUTPUT INFO
     png_structp png_ptr =
 	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    E(png_ptr, "writing PNG: %s", *k);
+    E(png_ptr, "writing PNG: %s", *k)
     png_infop info_ptr = png_create_info_struct(png_ptr);
-    E(info_ptr, "writing PNG: %s", *k);
+    E(info_ptr, "writing PNG: %s", *k)
 #ifdef PNG_SETJMP_SUPPORTED
-    // E(!setjmp(png_jmpbuf(png_ptr)), "writing PNG: %s", "???");
+    // E(!setjmp(png_jmpbuf(png_ptr)), "writing PNG: %s", "???")
     if(setjmp(png_jmpbuf(png_ptr))) return 1;
 #endif
     png_init_io(png_ptr, fp);
@@ -399,7 +413,7 @@ endflagloop:
 		.exact = exact, // see EXTRAHELP
 		.pass = 1, .segments = 1 // unused, for WebPValidateConfig
 	}, &o),
-	"%sing WebP: %s (%u)", "encod", es[o.error_code - 1], o.error_code);
+	"%sing WebP: %s (%u)", "encod", es[o.error_code - 1], o.error_code)
 #define F s.lossless_features
 #define C s.palette_size
     PFV("Output WebP info:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n"
@@ -416,12 +430,12 @@ endflagloop:
 	F && F & 8 ? " palette" : "", C ? "" : ">", C ? C : 256);
     WebPPictureFree(&o);
 #endif // FROMWEBP
-    EC(usestdout ? "stdout" : outname);
+    EC(usestdout ? "stdout" : outname)
     if(usepipe || !--argc) return 0;
     if(outname) {
 	free(outname);
 	outname = 0;
     }
     argv++;
-    OPENR(0);
+    OPENR(0)
 } }
