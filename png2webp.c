@@ -1,7 +1,7 @@
 // anti-copyright Lucy Phipps 2020
 // vi: sw=2 tw=80
 // TODO: REFACTOR
-#define VERSION "v0.8"
+#define VERSION "v0.9"
 #ifdef FROMWEBP
 /* TODO: Try to compress somewhat better
 Ideally should palette if <=256 colors (in order of appearance),

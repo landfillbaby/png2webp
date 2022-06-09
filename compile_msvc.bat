@@ -8,7 +8,7 @@ cl.exe /nologo /std:c11 /W2 /Brepro /O2 /Ob3 /GL /Gw /Qpar /DNDEBUG ^
     libwebp\src\enc\*.c libwebp\src\utils\*.c libwebp\src\dsp\*.c
 cl.exe /nologo /std:c11 /W2 /Brepro /O2 /Ob3 /GL /Gw /Qpar /DNDEBUG ^
     /Ilibpng /Izlib /Ilibwebp /Ilibwebp\src /DWEBP_USE_THREAD ^
-    /DFROMWEBP %* png2webp.c libpng\png*.c zlib\*.c ^
+    /DFROMWEBP /Fewebp2png %* png2webp.c libpng\png*.c zlib\*.c ^
     libwebp\src\dec\*.c libwebp\src\utils\*.c libwebp\src\dsp\*.c
 del *.obj
 popd
