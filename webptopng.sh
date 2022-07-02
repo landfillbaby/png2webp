@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-"${0%.sh}" -v -- "$@"
+"${0%webptopng.sh}png2webp" -rv -- "$@"
 ret=$?
 if [ $ret -ne 0 ]
 then

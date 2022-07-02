@@ -54,6 +54,3 @@ dkms.conf
 # mine
 *.lnk
 /png2webp
-/webp2png
-/pam2webp
-/webp2pam

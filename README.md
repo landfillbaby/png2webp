@@ -1,31 +1,27 @@
-# png2webp
+# PNG2WebP
 Simple command-line batch PNG to WebP converter (and vice versa).
 
 `png2webp` writes optimized lossless WebP versions of every PNG given,
 equivalent to `cwebp -z 9`.
 
-`webp2png` writes PNG versions of every WebP given, using default `libpng`
-settings, since properly optimizing PNGs is an overcomplicated mess that
-requires several different programs
-(and even then they're bigger than the equivalent WebPs).
-
 # Usage
 
-    png2webp [-befv-] infile.png ...
-    png2webp [-pefv-] [{infile.png|-} [outfile.webp|-]]
-
-`-b`: Work with many input files (Batch mode).
-    Constructs output filenames by removing the `.png` extension if possible,
-    and appending `.webp`.
+    png2webp [-refv-] INFILE ...
+    png2webp -p[refv-] [{INFILE|-} [OUTFILE|-]]
 
 `-p`: Work with a single file, allowing Piping from stdin or to stdout,
     or using a different output filename to the input.
-    `infile.png` and `outfile.webp` default to stdin and stdout respectively,
+    `INFILE` and `OUTFILE` default to stdin and stdout respectively,
     or explicitly as `-`.
     Will show this message if stdin/stdout is used and is a terminal.
 
+`-r`: Convert from WebP to PNG instead, using default `libpng` settings,
+    since properly optimizing PNGs is an overcomplicated mess
+    that requires several different programs
+    (and even then they're bigger than the equivalent WebPs).
+
 `-e`: Keep RGB data on pixels where alpha is 0.
-    Equivalent to `cwebp -z 9 -exact`.
+    Equivalent to `cwebp -z 9 -exact`. Always enabled for `-r`.
 
 `-f`: Force overwrite of output files (has no effect on stdout).
 
@@ -33,29 +29,29 @@ requires several different programs
 
 `--`: Explicitly stop parsing options.
 
-Without `-b` or `-p`, and with 1 or 2 filenames, there is some ambiguity.
-In this case it will tell you what its guess is.
-
-`webp2png` has the same syntax, but lacks `-e` as output is always exact.
-
 For drag-and-drop usage, the provided `.bat` (Windows) and `.sh` (Unix-like)
 wrappers do 2 things:
-* Specify `-bv --`.
+* Specify `-v --`.
 * Wait for user input if errors happen.
 
 # Compiling
-## Windows with Visual Studio / MSVC
-* Download the latest release sources of libpng, libwebp, and zlib,
-and extract them to this directory.
-* Rename the folders to remove the version numbers.
-* Search the start menu for "Native Tools Command Prompt",
-and select the appropriate one for your system.
-* Run `compile_msvc.bat` from this prompt
-(you should be able to click and drag it into the window).
-* Optionally put the resulting `.exe`s somewhere on your `%PATH%`.
+## Prebuilt libpng and libwebp
+Install `libpng` and `libwebp`, then just run:
 
-## Other
-Install `libwebp` and `libpng`, then just run `make install`.
+    cc -O3 -s -o png2webp png2webp.c -lpng -lwebp
+
+Or on Windows MSVC:
+
+    cl.exe /nologo /std:c11 /O2 /Ob3 png2webp.c /link libpng.dll libwebp.dll
+
+## Static build
+Download the sources for libpng, zlib, and libwebp,
+and place them in the supplied folders, or run
+
+    git submodule update --init --depth 1
+
+Then run `./configure && make`.
+If compiling for Windows, ignore zlib's `./configure` failure.
 
 ## Problems?
 In either case, if you get any warnings or errors, just
@@ -69,27 +65,24 @@ and put the errors in a code block in the comment box:
 ## Compilation flags
 Define these as preprocessor macros:
 
-`FROMWEBP`: Compile webp2png.
-
-`NOFOPENX`: If C11's fopen() "wbx" parameter isn't supported on your system,
+`NOFOPENX`: If C11's `fopen("wbx")` parameter isn't supported on your system,
 problems happen without `-f`: system errors, overwriting anyway, etc.
 It's undefined behaviour. This forces a workaround, used automatically
 when compiling with no C11 support, with POSIX `open()` and `fdopen()`.
+
+`NOVLA`: Use `malloc()`/`free()` instead of a C99 variable-length array
+for output filenames in batch mode. May be on by default in C11 onwards.
 
 `USEGETOPT`: Use `getopt` for command-line parsing instead of a simple loop.
 
 `NOTHREADS`: Use single-threaded WebP encoding/decoding.
 I'm pretty sure it only uses 2 threads anyway.
 
-`IDEC_BUFSIZE`: Define this to a positive integer, the size in bytes of the
-buffer for decoding WebP files. Defaults to 65536 (64 kibibytes).
-
 `LOSSYISERROR`: Give an error when trying to decode lossy WebP files.
 This means no lossy VP8 code in static globally optimized builds!
 
-`PAM`: Read/write `netpbm` PAM files instead of PNGs.
-Link `pam2webp` against `libnetpbm` instead of `libpng`.
-`webp2pam` doesn't need `libnetpbm`, it constructs the output file itself.
+`FIXEDGAMMA`: On by default in Makefile.
+Use libpng's fixed-point gamma interface for faster and smaller static builds.
 
 # Why?
 I wanted a smaller, faster, and less platform dependent way to convert old

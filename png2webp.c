@@ -1,189 +1,484 @@
-// anti-copyright Lucy Phipps 2020
+// anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-// TODO: REFACTOR
-#define VERSION "v0.9"
-#ifdef FROMWEBP
+#define VERSION "v1.0"
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
+#include <setjmp.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#if __STDC_VERSION__ < 201112L && !defined NOFOPENX
+#define NOFOPENX
+#endif
+#ifdef NOFOPENX
+#include <fcntl.h>
+#include <sys/stat.h>
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+#endif
+#ifdef _WIN32
+#define _CRT_NONSTDC_NO_WARNINGS
+#include <fcntl.h>
+#include <io.h>
+#define RB "rb"
+#define WB "wb"
+#define XB "wbx"
+#else
+#include <unistd.h>
+#define setmode(x, y) 0
+#define RB "r"
+#define WB "w"
+#define XB "wx"
+#endif
+#include "png.h"
+#include "webp/decode.h"
+#include "webp/encode.h"
+static int help(void) {
+  fputs("PNG2WebP " VERSION "\n\
+\n\
+Usage:\n\
+png2webp [-refv-] INFILE ...\n\
+png2webp -p[refv-] [{INFILE|-} [OUTFILE|-]]\n\
+\n\
+-p: Work with a single file, allowing Piping from stdin or to stdout,\n\
+    or using a different output filename to the input.\n\
+    `INFILE` and `OUTFILE` default to stdin and stdout respectively,\n\
+    or explicitly as \"-\".\n\
+    Will show this message if stdin/stdout is used and is a terminal.\n\
+-r: Convert from WebP to PNG instead.\n\
+-e: Keep RGB data on pixels where alpha is 0. Always enabled for `-r`.\n\
+-f: Force overwrite of output files (has no effect on stdout).\n\
+-v: Be verbose.\n\
+--: Explicitly stop parsing options.\n",
+    stderr);
+  return -1;
+}
+static bool exact = 0, force = 0, verbose = 0;
+#define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
+#define PFV(...) \
+  if(verbose) PF(__VA_ARGS__)
+#define IP (ip ? ip : "<stdin>")
+#define OP (op ? op : "<stdout>")
+static FILE *openr(char *ip) {
+  PFV("Decoding %s ...", IP);
+  if(!ip) return stdin; // TODO: char **ip; *ip = "<stdin>" ?
+  FILE *fp;
+#ifdef NOFOPENX
+  int fd = open(ip, O_RDONLY | O_BINARY);
+  if(fd == -1) {
+    PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
+    return 0;
+  }
+  if(!(fp = fdopen(fd, RB))) {
+    PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
+    close(fd);
+    return 0;
+  }
+#else
+  if(!(fp = fopen(ip, RB))) {
+    PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
+    return 0;
+  }
+#endif
+  return fp;
+}
+static FILE *openw(char *op) {
+  PFV("Encoding %s ...", OP);
+  if(!op) return stdout; // TODO: char **op; *op = "<stdout>" ?
+  FILE *fp;
+#define EO(x) \
+  if(!(x)) { \
+    PF("ERROR opening %s for %s: %s", op, force ? "writing" : "creation", \
+      strerror(errno)); \
+    return 0; \
+  }
+#ifdef NOFOPENX
+  int fd = open(op, O_WRONLY | O_CREAT | O_TRUNC | (!force * O_EXCL) | O_BINARY,
+#ifdef _WIN32
+    S_IREAD | S_IWRITE
+#else
+    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
+#endif
+  );
+  EO(fd != -1) // TODO: gotos?
+  if(!(fp = fdopen(fd, WB))) {
+    PF("ERROR opening %s for %s: %s", op, force ? "writing" : "creation",
+      strerror(errno));
+    close(fd);
+    remove(op);
+    return 0;
+  }
+#else
+  EO(fp = fopen(op, force ? WB : XB))
+#endif
+  return fp;
+}
+static size_t pnglen;
+static void pngread(png_struct *p, uint8_t *d, size_t s) {
+  if(!fread(d, s, 1, png_get_io_ptr(p))) png_error(p, "I/O error");
+  pnglen += s;
+}
+static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
+  if(!fwrite(d, s, 1, png_get_io_ptr(p))) png_error(p, "I/O error");
+  pnglen += s;
+}
+/* TODO?
+static void pngflush(png_struct *p) { (void)p; }
+equivalent to the default but may generate smaller static code:
+static void pngflush(png_struct *p) { fflush(png_get_io_ptr(p)); }
+*/
+static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
+  return (int)fwrite(d, s, 1, p->custom_ptr);
+}
+#define E(x, ...) \
+  if(!(x)) { \
+    PF("ERROR " __VA_ARGS__); \
+    return 1; \
+  }
+static bool p2w(char *ip, char *op) {
+  FILE *fp = openr(ip);
+  if(!fp) return 1;
+  uint32_t *b = 0;
+  png_info *n = 0;
+  char *k[VP8_ENC_ERROR_LAST - 1 /* 3 */] = {"Out of memory",
+    "???", // oom flushing bitstream, unused in libwebp
+    "???", // null param
+    "Broken config, file a bug report",
+    "???", // image too big (already checked)
+    "???", "???", // lossy
+    "I/O error",
+    "???", // lossy
+    "???"}; // cancelled
+  png_struct *p = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+  // ^ TODO: custom error functions?
+  if(!p) {
+    PF("ERROR reading %s: %s", IP, *k);
+    goto p2w_close;
+  }
+  n = png_create_info_struct(p);
+  if(!n) {
+    PF("ERROR reading %s: %s", IP, *k);
+    goto p2w_close;
+  }
+  if(setjmp(png_jmpbuf(p))) {
+  p2w_close:
+    fclose(fp);
+    png_destroy_read_struct(&p, &n, 0);
+  p2w_free:
+    free(b);
+    return 1;
+  }
+  pnglen = 0;
+  png_set_read_fn(p, fp, pngread);
+  png_read_info(p, n);
+  uint32_t width, height;
+  int bitdepth, colortype;
+  png_get_IHDR(p, n, &width, &height, &bitdepth, &colortype, 0, 0, 0);
+  if(width > 16383 || height > 16383) {
+    PF("ERROR reading %s: Image too big (%u x %u, max. 16383 x 16383 px)", IP,
+      width, height);
+    goto p2w_close;
+  }
+  if(bitdepth > 8)
+    PF("Warning: %s is 16-bit, will be downsampled to 8-bit", IP);
+  bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
+#ifdef FIXEDGAMMA
+#define GAMMA ((uint32_t)gamma) / 1e5
+  int32_t gamma = 45455;
+  if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma))
+    png_set_gamma_fixed(p, 22e4, gamma);
+#else
+#define GAMMA gamma
+  double gamma = 1 / 2.2;
+  if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA(p, n, &gamma))
+    png_set_gamma(p, 2.2, gamma);
+#endif
+#define S(x) png_set_##x(p)
+  S(scale_16);
+  S(expand);
+  S(gray_to_rgb);
+  S(packing);
+  if(*(uint8_t *)&(uint16_t){1}) {
+    S(bgr);
+    png_set_add_alpha(p, 255, PNG_FILLER_AFTER);
+  } else {
+    // TODO: test somehow
+    S(swap_alpha);
+    png_set_add_alpha(p, 255, PNG_FILLER_BEFORE);
+  }
+  int passes = S(interlace_handling);
+  png_read_update_info(p, n);
+#ifndef NDEBUG
+  size_t rowbytes = png_get_rowbytes(p, n);
+  if(rowbytes != (size_t)4 * width) {
+    PF("ERROR reading %s: rowbytes is %zu, should be %zu", IP, rowbytes,
+      (size_t)4 * width);
+    goto p2w_close;
+  }
+#endif
+  b = malloc(width * height * 4);
+  if(!b) {
+    PF("ERROR reading %s: %s", IP, *k);
+    goto p2w_close;
+  }
+  for(int x = passes; x; x--) {
+    uint8_t *w = (uint8_t *)b;
+    for(unsigned y = height; y; y--) {
+      png_read_row(p, w, 0);
+      w += width * 4;
+    }
+  }
+  png_read_end(p, 0);
+  png_destroy_read_struct(&p, &n, 0);
+  fclose(fp);
+  char *colors[7] = {
+    "greyscale", "???", "RGB", "paletted", "greyscale + alpha", "???", "RGBA"};
+  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
+      "Format: %u-bit %s (%u)%s%s\nGamma: %.5g",
+    IP, width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
+    (unsigned)colortype < 7 ? colors[colortype] : "???", colortype,
+    trns ? ", with transparency" : "", passes > 1 ? ", interlaced" : "", GAMMA);
+  trns = trns || (colortype & PNG_COLOR_MASK_ALPHA);
+  if(!(fp = openw(op))) goto p2w_free;
+  WebPAuxStats s;
+  WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
+    .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
+    .stats = verbose ? &s : 0}; // TODO: memset? WebPPictureInit?
+  // progress_hook only reports 1, 5, 90, 100 for lossless
+  if(!WebPEncode(
+       &(WebPConfig){
+	 // TODO: memset? WebpConfigInit?
+	 1, 100, 6, // lossless, max
+	 WEBP_HINT_GRAPH, // 16-bit is only for alpha on lossy
+#ifndef NOTHREADS
+	 .thread_level = 1, // doesn't seem to affect output
+#endif
+	 .near_lossless = 100, // don't modify visible pixels
+	 .exact = exact, // see `-e`
+	 .pass = 1, .segments = 1 // unused, for WebPValidateConfig
+       },
+       &o)) {
+    PF("ERROR writing %s: %s", OP, k[o.error_code - 1]);
+    fclose(fp);
+  p2w_rm:
+    if(op) remove(op);
+    goto p2w_free;
+  }
+  if(fclose(fp)) {
+    PF("ERROR closing %s: %s", OP, strerror(errno));
+    goto p2w_rm;
+  }
+  trns = trns && WebPPictureHasTransparency(&o);
+  free(b);
+#define F s.lossless_features
+#define C s.palette_size
+  PFV("Info: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n"
+      "Header size: %u, image data size: %u\nUses alpha: %s\n"
+      "Precision bits: histogram=%u transform=%u cache=%u\n"
+      "Lossless features:%s%s%s%s\nColors: %s%u",
+    OP, o.width, o.height, s.lossless_size,
+    (unsigned)s.lossless_size * 8. / (unsigned)(o.width * o.height),
+    s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
+    s.histogram_bits, s.transform_bits, s.cache_bits,
+    F ? F & 1 ? " prediction" : "" : " none", F && F & 2 ? " cross-color" : "",
+    F && F & 4 ? " subtract-green" : "", F && F & 8 ? " palette" : "",
+    C ? "" : ">", C ? C : 256);
+  return 0;
+}
 /* TODO: Try to compress somewhat better
 Ideally should palette if <=256 colors (in order of appearance),
 or at least try to palette when input WebP was,
 but that's not part of either libpng encoding or libwebp decoding.
 Maybe do this:
-#include <webp/encode.h> // for WebPPicture
 WEBP_EXTERN int WebPGetColorPalette( // declared in libwebp utils/utils.h
-const struct WebPPicture* const, uint32_t* const); */
-#include <webp/decode.h>
-#define INEXT "webp"
-#define INEXTCHK INEXT
-#ifdef PAM
-#define OUTEXT "pam"
-#else
-#include <png.h>
-#define OUTEXT "png"
-#endif
-#define OUTEXTCHK "." OUTEXT
-#define EXTRALETTERS
-#define EXTRAHELP
-#else // FROMWEBP
-#include <webp/encode.h>
-#ifdef PAM
-#include <pam.h>
-#define INEXT "pam"
-#define X(x) ((argv[0][len - 2] | 32) == x)
-#define ISINEXT \
-	if(len > 3) { \
-		uint32_t ext, extmask, extmatch; \
-		memcpy(&ext, *argv + len - 4, 4); \
-		memcpy(&extmask, (char[4]){"\0 \xff "}, 4); \
-		memcpy(&extmatch, (char[4]){".p\xffm"}, 4); \
-		if((ext | extmask) == extmatch && (X('b') || X('g') || \
-			X('p') || X('n') || X('a'))) len -= 4; \
-	}
-#else
-#include <png.h>
-#define INEXT "png"
-#define INEXTCHK ".png"
-#endif
-#define OUTEXT "webp"
-#define OUTEXTCHK "webp"
-#define EXTRALETTERS "e"
-#define EXTRAHELP "-e: Keep RGB data on pixels where alpha is 0.\n"
-#endif // FROMWEBP
-#include <errno.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifdef _WIN32
-#include <fcntl.h>
-#include <io.h>
-#define O(x) _##x
-#else
-#include <unistd.h>
-#define setmode(x, y) 0
-#define O(x) x
-#endif
-#ifndef ISINEXT
-#define ISINEXT \
-	if(len >= sizeof INEXT) { \
-		uint32_t ext, extmask, extmatch; \
-		memcpy(&ext, *argv + len - 4, 4); \
-		memcpy(&extmask, (char[4]){(sizeof INEXT > 4) * 32, 32, 32, \
-			32}, 4); \
-		memcpy(&extmatch, (char[4]){INEXTCHK}, 4); \
-		if((sizeof INEXT < 5 || argv[0][len - 5] == '.') && \
-			(ext | extmask) == extmatch) len -= sizeof INEXT; \
-	}
-#endif
-#define P(x) fputs(x "\n", stderr)
-#define PF(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-// #define PV(x) if(verbose) P(x);
-#define PFV(...) if(verbose) PF(__VA_ARGS__)
-#define E(f, ...) \
-	if(!(f)) { \
-		PF("ERROR " __VA_ARGS__); \
-		return 1; \
-	}
-#if __STDC_VERSION__ < 201112L || defined NOFOPENX
-#include <fcntl.h>
-#include <sys/stat.h>
-#endif
-#define HELP \
-  P(INEXT "2" OUTEXT " " VERSION "\n\nUsage:\n" INEXT "2" OUTEXT \
-    " [-b" EXTRALETTERS "fv-] infile." INEXT " ...\n" INEXT "2" OUTEXT \
-    " [-p" EXTRALETTERS "fv-] [{infile." INEXT "|-} [outfile." OUTEXT \
-    "|-]]\n\n-b: Work with many input files (Batch mode).\n" \
-    "    Constructs output filenames by removing the ." INEXT \
-    " extension if possible,\n    and appending \"." OUTEXT "\".\n" \
-    "-p: Work with a single file, allowing Piping from stdin or to stdout,\n" \
-    "    or using a different output filename to the input.\n    infile." \
-    INEXT " and outfile." OUTEXT \
-    " default to stdin and stdout respectively,\n" \
-    "    or explicitly as \"-\".\n" \
-    "    Will show this message if stdin/stdout is used and is a terminal.\n" \
-    EXTRAHELP \
-    "-f: Force overwrite of output files (has no effect on stdout).\n" \
-    "-v: Be verbose.\n--: Explicitly stop parsing options.\n\n" \
-    "Without -b or -p, and with 1 or 2 filenames, there is some ambiguity.\n" \
-    "In this case it will tell you what its guess is."); \
-  return -1;
-#define OPENR(x) \
-	PFV("%scoding %s ...", "De", x ? "stdin" : *argv); \
-	if(x) fp = stdin; \
-	else E(fp = fopen(*argv, "rb"), "opening \"%s\" for %s: %s", *argv, \
-		"reading", strerror(errno))
-#define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
-#define PIPECHK(x, y) \
-  if(use##y) { \
-	if(!(x && skipstdoutchk) && O(isatty)(x)) { HELP } \
-	E(O(setmode)(x, _O_BINARY) != -1, "setting %s to binary mode", #y) \
+const struct WebPPicture *const, uint32_t *const);
+have 2 palettes. 1 in order of appearance and one sorted for bsearch */
+static bool w2p(char *ip, char *op) {
+  FILE *fp = openr(ip);
+  if(!fp) return 1;
+  bool openwdone = 0;
+  uint8_t *x = 0, *b = 0;
+  png_struct *p = 0;
+  png_info *n = 0;
+  uint8_t i[12]; // TODO: 16 when LOSSYISERROR and check for VP8[LX]?
+  char *k[] = {"Out of memory", "Broken config, file a bug report",
+    "Invalid WebP", "???", "???", "???", "I/O error"};
+  // unsupported feature, suspended, cancelled
+  // ^ TODO: check size like other k
+  if(!fread(i, 12, 1, fp)) {
+    PF("ERROR reading %s: %s", IP, k[6]);
+    goto w2p_close;
   }
-#define URGC (unsigned)argc
-#define EC(x) E(!fclose(fp), "closing %s: %s", x, strerror(errno))
-#ifndef FROMWEBP
-static FILE* fp;
-static int w(const uint8_t* d, size_t s, const WebPPicture* x) {
-	(void)x;
-	return s ? (int)fwrite(d, s, 1, fp) : 1;
+  if(memcmp(i, (char[4]){"RIFF"}, 4) || memcmp(i + 8, (char[4]){"WEBP"}, 4)) {
+    PF("ERROR reading %s: %s", IP, k[2]);
+    goto w2p_close;
+  }
+  size_t l = ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
+  // ^ RIFF header size
+  x = malloc(l);
+  if(!x) {
+    PF("ERROR reading %s: %s", IP, *k);
+    goto w2p_close;
+  }
+  memcpy(x, i, 12); // should optimize out
+  if(!fread(x + 12, l - 12, 1, fp)) {
+    PF("ERROR reading %s: %s", IP, k[6]);
+    goto w2p_close;
+  }
+  fclose(fp);
+#if defined LOSSYISERROR || defined NOTHREADS
+  WebPBitstreamFeatures I;
+#else
+  WebPDecoderConfig c = {.options.use_threads = 1};
+  // ^ TODO: memset? WebPInitDecoderConfig?
+#define I c.input
+#endif
+  VP8StatusCode r = WebPGetFeatures(x, l, &I);
+  if(r) {
+    PF("ERROR reading %s: %s", IP, k[r - 1]);
+    goto w2p_free;
+  }
+#define V I.format
+#define W ((unsigned)I.width)
+#define H ((unsigned)I.height)
+#define A I.has_alpha
+#ifdef LOSSYISERROR
+#define FMTSTR
+#define FMTARG
+#define ANMSTR "%s"
+#define ANMARG , "animat"
+#else
+  char *formats[] = {"undefined/mixed", "lossy", "lossless"};
+#define FMTSTR "\nFormat: %s (%d)"
+#define FMTARG , (unsigned)V < 3 ? formats[V] : "???", V
+#define ANMSTR "animat"
+#define ANMARG
+#endif
+  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
+      "Uses alpha: %s" FMTSTR,
+    IP, W, H, l, (double)l * 8 / (W * H), A ? "yes" : "no" FMTARG);
+  if(I.has_animation) {
+    PF("ERROR reading %s: Unsupported feature: " ANMSTR "ion", IP ANMARG);
+    goto w2p_free;
+  }
+#ifdef LOSSYISERROR
+  if(V != 2) {
+    PF("ERROR reading %s: Unsupported feature: %sion", IP, "lossy compress");
+    goto w2p_free;
+  }
+#endif
+#define B ((unsigned)(3 + A))
+  b = malloc(W * H * B);
+  if(!b) {
+    PF("ERROR reading %s: %s", IP, *k);
+    goto w2p_free;
+  }
+#if defined LOSSYISERROR || defined NOTHREADS
+  if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(
+       x, l, b, W * H * B, (int)(W * B))) {
+    PF("ERROR reading %s: %s", IP, k[2]);
+    goto w2p_free;
+  }
+#else
+  c.output.colorspace = A ? MODE_RGBA : MODE_RGB;
+  c.output.is_external_memory = 1;
+#define D c.output.u.RGBA
+  D.rgba = b;
+  D.stride = (int)(W * B);
+  D.size = W * H * B;
+  r = WebPDecode(x, l, &c);
+  if(r) {
+    PF("ERROR reading %s: %s", IP, k[r - 1]);
+    goto w2p_free;
+  }
+#endif
+  free(x);
+  x = 0;
+  if(!(fp = openw(op))) goto w2p_free;
+  openwdone = !!op;
+  p = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+  if(!p) {
+    PF("ERROR writing %s: %s", OP, *k);
+    goto w2p_close;
+  }
+  n = png_create_info_struct(p);
+  if(!n) {
+    PF("ERROR writing %s: %s", OP, *k);
+    goto w2p_close;
+  }
+  if(setjmp(png_jmpbuf(p))) {
+  w2p_close:
+    fclose(fp);
+  w2p_free:
+    if(openwdone) remove(op);
+    free(x);
+    free(b);
+    png_destroy_write_struct(&p, &n);
+    return 1;
+  }
+  pnglen = 0;
+  png_set_write_fn(p, fp, pngwrite, 0); // TODO: pngflush?
+  png_set_filter(p, 0, PNG_ALL_FILTERS);
+  png_set_compression_level(p, 9);
+  // png_set_compression_memlevel(p, 9);
+  png_set_IHDR(p, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
+  png_write_info(p, n);
+  uint8_t *w = b;
+  for(unsigned y = H; y; y--) {
+    png_write_row(p, w);
+    w += W * B;
+  }
+  png_write_end(p, n);
+  png_destroy_write_struct(&p, &n);
+  p = 0;
+  n = 0;
+  free(b);
+  b = 0;
+  if(fclose(fp)) {
+    PF("ERROR closing %s: %s", OP, strerror(errno));
+    goto w2p_free;
+  }
+  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
+      "Format: %u-bit %s (%u)%s%s\nGamma: %.5g",
+    OP, W, H, pnglen, (double)pnglen * 8 / (uint32_t)(W * H), 8,
+    A ? "RGBA" : "RGB", A ? 6 : 2, "", "", 1 / 2.2);
+  return 0;
 }
-#endif
-int main(int argc, char** argv) {
-#ifdef FROMWEBP
-  FILE* fp;
-#else // FROMWEBP
-#ifdef PAM
-  pm_init("ERROR", 0); // TODO: maybe *argv or (INEXT "2" OUTEXT) ?
-#elif !defined USEADVANCEDPNG
-  uint32_t endian;
-  memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
-  E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
-	"32-bit mixed-endianness (%X) not supported", endian)
-#endif
-  bool exact = 0;
-#endif // FROMWEBP
-  bool usepipe = 0, usestdin = 0, usestdout = 0, force = 0, verbose = 0,
-	chosen = 0, skipstdoutchk = 0;
-  char* outname = 0;
+int main(int argc, char **argv) {
+  static_assert(CHAR_BIT == 8, "char isn't 8-bit");
+  { // should be optimized out
+    uint32_t endian;
+    memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
+    E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
+      "32-bit mixed-endianness (%X) not supported", endian)
+  }
+  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
-  int c;
-  while((c = getopt(argc, argv, ":bp" EXTRALETTERS "fv")) != -1) switch(c)
+  for(int c; (c = getopt(argc, argv, ":prefv")) != -1;)
+    switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
-    while(*++*argv) switch(**argv)
+    while(*++*argv)
+      switch(**argv)
 #endif
     {
-#ifdef __has_c_attribute
-#if __has_c_attribute(fallthrough)
-#define FALLTHRU [[fallthrough]]
-#endif
-#endif
-#if !defined FALLTHRU && defined __has_attribute
-#if __has_attribute(fallthrough)
-#define FALLTHRU __attribute__((fallthrough))
-#endif
-#endif
-#ifndef FALLTHRU
-#define FALLTHRU 0
-#endif
-      case 'p': usepipe = 1; FALLTHRU;
-      case 'b':
-	if(chosen) { HELP }
-	chosen = 1;
-	break;
-#ifndef FROMWEBP
-	case 'e': exact = 1; break;
-#endif
-	case 'f': force = 1; break;
-	case 'v': verbose = 1; break;
+      case 'p': pipe = 1; break;
+      case 'r': reverse = 1; break;
+      case 'e': exact = 1; break;
+      case 'f': force = 1; break;
+      case 'v': verbose = 1; break;
 #ifndef USEGETOPT
-	case '-':
-	  if(!argv[0][1]) {
-		argc--;
-		argv++;
-		goto endflagloop;
-	  }
-	  FALLTHRU;
+      case '-':
+	if(argv[0][1]) return help();
+	argc--;
+	argv++;
+	goto endflagloop;
 #endif
-	default: HELP
+      default: return help();
     }
 #ifdef USEGETOPT
   argc -= optind;
@@ -191,251 +486,75 @@ int main(int argc, char** argv) {
 #else
 endflagloop:
 #endif
-  if(chosen && (usepipe ? URGC > 2 : !argc)) { HELP }
-  if(usepipe) {
-	usestdin = !argc || PIPEARG(0);
-	usestdout = URGC < 2 || PIPEARG(1);
-  } else if(!chosen && URGC < 3) {
-    usestdin = !argc || PIPEARG(0);
-    usestdout = argc == 2 ? PIPEARG(1) : usestdin;
-    if(!(usepipe = usestdin || usestdout)) {
-      PF("Warning: %u file%s given and neither -b or -p specified.", URGC,
-	argc == 1 ? "" : "s");
-      if(argc == 1) {
-	if(!O(isatty)(1)) usepipe = usestdout = skipstdoutchk = 1;
-      } else {
-	size_t len = strlen(argv[1]);
-	if(len >= sizeof OUTEXT) {
-	  uint32_t ext, extmask, extmatch;
-	  memcpy(&ext, argv[1] + len - 4, 4);
-	  memcpy(&extmask, (char[4]){(sizeof OUTEXT > 4) * 32, 32, 32, 32}, 4);
-	  memcpy(&extmatch, (char[4]){OUTEXTCHK}, 4);
-	  usepipe = (sizeof OUTEXT < 5 || argv[1][len - 5] == '.') &&
-		(ext | extmask) == extmatch;
-      } }
-      PF("Guessed -%c.", usepipe ? 'p' : 'b');
-  } }
-  PIPECHK(0, stdin)
-  PIPECHK(1, stdout)
-  OPENR(usestdin)
-  for(;;) {
-#ifdef FROMWEBP
-    WebPDecoderConfig c = { // TODO: memset? WebPInitDecoderConfig?
-#ifdef NOTHREADS
-	0
-#else
-	.options.use_threads = 1
-#endif
-    };
-#ifndef IDEC_BUFSIZE
-#define IDEC_BUFSIZE 65536
-#endif
-    uint8_t i[IDEC_BUFSIZE];
-    size_t l = fread(i, 1, IDEC_BUFSIZE, fp);
-    char* k[] = {"out of RAM", "invalid params", "bitstream broke",
-	"unsupported feature", "suspended", "cancelled", "not enough data"};
-#define F c.input
-#define A F.has_alpha
-    VP8StatusCode r = WebPGetFeatures(i, l, &F);
-    E(!r, "reading WebP header: %u (%s)", r, r < 8 ? k[r - 1] : "???")
-#ifdef LOSSYISERROR
-#define FORMATSTR
-#define GETFORMAT
-#define ANIMARGS "%sion)", k[3], "animat"
-#else
-    char* formats[] = {"undefined/mixed", "lossy", "lossless"};
-#define FORMATSTR "\nFormat: %s (%d)"
-#define GETFORMAT , (unsigned)V < 3 ? formats[V] : "???", V
-#define ANIMARGS "animation)", k[3]
-#endif
-#define V F.format
-#define W (unsigned)F.width
-#define H (unsigned)F.height
-    PFV("Input WebP info:\nDimensions: %u x %u\nUses alpha: %s" FORMATSTR,
-	W, H, A ? "yes" : "no" GETFORMAT);
-    E(!F.has_animation, "reading WebP header: 4 (%s: " ANIMARGS)
-#ifdef LOSSYISERROR
-    E(V == 2, "reading WebP header: 4 (%s: %sion)", k[3], "lossy compress")
-#endif
-    if(A) c.output.colorspace = MODE_RGBA;
-    WebPIDecoder* d = WebPIDecode(i, l, &c);
-    E(d, "initializing WebP decoder: 1 (%s)", *k)
-    for(size_t x = l; (r = WebPIAppend(d, i, x)); l += x) {
-	E(r == 5 && !feof(fp), "reading WebP data: %d (%s)", r == 5 ? 7 : r,
-		r == 5 ? k[6] : r < 8 ? k[r - 1] : "???")
-	x = fread(i, 1, IDEC_BUFSIZE, fp);
-    }
-    WebPIDelete(d);
-    PFV("Size: %zu bytes (%.15g bpp)", l, (double)l * 8 / (uint32_t)(W * H));
-#else // FROMWEBP
-#ifdef PAM
-    struct pam i;
-    pnm_readpaminit(fp, &i, PAM_STRUCT_SIZE(tuple_type));
-    E(i.depth < 5, "too many channels: %u (max. 4)", i.depth)
-    E((unsigned)i.width < 16384 && (unsigned)i.height < 16384,
-	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height)
-    if(255 % i.maxval) PF("Warning: scaling from maxval %lu to 255", i.maxval);
-    tuple* r = pnm_allocpamrow(&i);
-#else
-#ifdef USEADVANCEDPNG
-#error // TODO
-#else
-    png_image i = {.version = PNG_IMAGE_VERSION}; // TODO: memset?
-#define EP(f, s, d) \
-	E(f, "reading PNG %s: %s", s, i.message) \
-	if(i.warning_or_error) { \
-		PF("PNG %s warning: %s", s, i.message); \
-		if(d) i.warning_or_error = 0; \
-	}
-    EP(png_image_begin_read_from_stdio(&i, fp), "info", 1)
-    E(i.width < 16384 && i.height < 16384,
-	"image too big (%ux%u, max. 16383x16383 px)", i.width, i.height)
-    if(i.format & PNG_FORMAT_FLAG_LINEAR)
-	P("Warning: input PNG is 16bpc, will be downsampled to 8bpc");
-    bool A = !!(i.format & PNG_FORMAT_FLAG_ALPHA);
-    i.format = (*(uint8_t*)&(uint16_t){1}) ? PNG_FORMAT_BGRA : PNG_FORMAT_ARGB;
-#endif
-#endif
-#define W ((uint16_t)i.width)
-#define H ((uint16_t)i.height)
-    WebPPicture o = {1, .width = W, H, .writer = w};
-    // ^ TODO: memset? WebPPictureInit?
-    WebPAuxStats s;
-    if(verbose) o.stats = &s;
-    // progress_hook only reports 1, 5, 90, 100 for lossless
-    char* es[VP8_ENC_ERROR_LAST - 1] = {"out of RAM",
-	"out of RAM flushing bitstream", "something was null", "broken config",
-	/* "image too big (max. 16383x16383 px)" */ "", "partition >512KiB",
-	"partition >16MiB", "couldn't write", "output >4GiB", "cancelled"};
-    E(WebPPictureAlloc(&o), "%sing WebP: %s (%u)", "allocat",
-	es[o.error_code - 1], o.error_code)
-#ifdef PAM
-    for(unsigned y = 0; y < H; y++) {
-	pnm_readpamrow(&i, r);
-	pnm_scaletuplerow(&i, r, r, 255);
-#define A (~i.depth & 1)
-#define D (i.depth > 2)
-	for(unsigned x = 0; x < W; x++) o.argb[y * W + x] = (uint32_t)(
-		(((A ? r[x][i.depth - 1] : 255) & 255) << 24) |
-		((*r[x] & 255) << 16) | ((r[x][D] & 255) << 8) |
-		(r[x][D * 2] & 255));
-    }
-    pnm_freepamrow(r);
-#else
-#ifdef USEADVANCEDPNG
-#error // TODO
-#else
-    EP(png_image_finish_read(&i, 0, o.argb, 0, 0), "data", 0)
-#endif
-#endif
-#endif // FROMWEBP
-    EC(usestdin ? "stdin" : *argv)
-    if(usestdout) {
-	PFV("%scoding %s ...", "En", "stdout");
-	fp = stdout;
-    } else {
-      if(usepipe) outname = argv[1];
-      else {
-	size_t len = strlen(*argv);
-	ISINEXT
-	outname = malloc(len + sizeof "." OUTEXT);
-	E(outname, "adding ." OUTEXT " extension to %s: out of RAM", *argv)
-	memcpy(outname, *argv, len);
-	memcpy(outname + len, "." OUTEXT, sizeof "." OUTEXT);
+#define URGC (unsigned)argc
+#define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
+  if(pipe) {
+    if(URGC > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0)) ||
+      ((usestdout = (URGC < 2 || PIPEARG(1))) && isatty(1)))
+      return help();
+    if(usestdin) setmode(0, O_BINARY);
+    if(usestdout) setmode(1, O_BINARY);
+    return (reverse ? w2p : p2w)(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
+  }
+  if(!argc) return help();
+  bool ret = 0;
+  if(reverse)
+    for(; argc; argc--, argv++) {
+      size_t len = strlen(*argv);
+      if(len > 4) {
+	uint32_t ext, extmatch;
+	memcpy(&ext, *argv + len - 4, 4);
+	memcpy(&extmatch, (char[4]){"webp"}, 4);
+	if(argv[0][len - 5] == '.' && (ext | 0x20202020) == extmatch) len -= 5;
       }
-      PFV("%scoding %s ...", "En", outname);
-#define EO(x) E(x, "opening \"%s\" for %s: %s", outname, \
-	force ? "writing" : "creation", strerror(errno))
-#if __STDC_VERSION__ < 201112L || defined NOFOPENX
-#ifndef O_BINARY
-#define O_BINARY 0
+      {
+#if defined __STDC_NO_VLA__ && !defined NOVLA
+#define NOVLA
 #endif
-      int fd = O(open)(outname, O(O_WRONLY) | O(O_CREAT) | O(O_BINARY) |
-	O(O_TRUNC) | (!force * O(O_EXCL)),
-#ifdef _WIN32
-	_S_IREAD | _S_IWRITE
+#ifdef NOVLA
+	char *op = malloc(len + 5);
+	E(op, "adding .%s extension to %s: Out of memory", "png", *argv)
 #else
-	0666
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvla"
+	char op[len + 5];
+#pragma GCC diagnostic pop
 #endif
-	);
-      EO(fd != -1 && (fp = O(fdopen)(fd, "wb")))
-#else
-      EO(fp = fopen(outname, force ? "wb" : "wbx"))
+	memcpy(op, *argv, len); // the only real memcpy
+	memcpy(op + len, ".png", 5);
+	ret = w2p(*argv, op) || ret;
+#ifdef NOVLA
+	free(op);
 #endif
+      }
     }
-#ifdef FROMWEBP
-#define D c.output.u.RGBA
-#ifdef PAM
-    fprintf(fp, "P7\nWIDTH %u\nHEIGHT %u\nDEPTH %c\nMAXVAL 255\n"
-	"TUPLTYPE RGB%s\nENDHDR\n", W, H, A ? '4' : '3', A ? "_ALPHA" : "");
-    fwrite(D.rgba, D.size, 1, fp);
+  else
+    for(; argc; argc--, argv++) {
+      size_t len = strlen(*argv);
+      if(len > 3) {
+	uint32_t ext, extmask, extmatch;
+	memcpy(&ext, *argv + len - 4, 4);
+	memcpy(&extmask, (char[4]){"\0   "}, 4);
+	memcpy(&extmatch, (char[4]){".png"}, 4);
+	if((ext | extmask) == extmatch) len -= 4;
+      }
+      {
+#ifdef NOVLA
+	char *op = malloc(len + 6);
+	E(op, "adding .%s extension to %s: Out of memory", "webp", *argv)
 #else
-    // TODO: PNG OUTPUT INFO
-    png_structp png_ptr =
-	png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    E(png_ptr, "writing PNG: %s", *k)
-    png_infop info_ptr = png_create_info_struct(png_ptr);
-    E(info_ptr, "writing PNG: %s", *k)
-#ifdef PNG_SETJMP_SUPPORTED
-    // E(!setjmp(png_jmpbuf(png_ptr)), "writing PNG: %s", "???")
-    if(setjmp(png_jmpbuf(png_ptr))) return 1;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvla"
+	char op[len + 6];
+#pragma GCC diagnostic pop
 #endif
-    png_init_io(png_ptr, fp);
-    png_set_filter(png_ptr, 0, PNG_ALL_FILTERS);
-    png_set_compression_level(png_ptr, 9);
-    // png_set_compression_memlevel(png_ptr, 9);
-    png_set_IHDR(png_ptr, info_ptr, W, H, 8,
-	A ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-	PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-    png_write_info(png_ptr, info_ptr);
-    png_bytep px = D.rgba;
-    for(unsigned y = 0; y < H; y++) {
-	png_write_row(png_ptr, px);
-	px += D.stride;
+	memcpy(op, *argv, len); // the only real memcpy
+	memcpy(op + len, ".webp", 6);
+	ret = p2w(*argv, op) || ret;
+#ifdef NOVLA
+	free(op);
+#endif
+      }
     }
-    png_write_end(png_ptr, info_ptr);
-    png_destroy_write_struct(&png_ptr, &info_ptr);
-#endif
-    WebPFreeDecBuffer(&c.output);
-#else // FROMWEBP
-#ifdef NOTHREADS
-#define THREADLEVEL
-#else
-#define THREADLEVEL .thread_level = 1,
-#endif
-    E(WebPEncode(
-	&(WebPConfig){ // TODO: memset? WebpConfigInit?
-		1, 100, 6, // lossless, max
-		WEBP_HINT_GRAPH, /* see VP8LEncodeImage source
-			16bpp is only for alpha on lossy */
-		THREADLEVEL // doesn't seem to affect output
-		.near_lossless = 100, // don't modify visible pixels
-		.exact = exact, // see EXTRAHELP
-		.pass = 1, .segments = 1 // unused, for WebPValidateConfig
-	}, &o),
-	"%sing WebP: %s (%u)", "encod", es[o.error_code - 1], o.error_code)
-#define F s.lossless_features
-#define C s.palette_size
-    PFV("Output WebP info:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n"
-	"Header size: %u, image data size: %u\nUses alpha: %s\n"
-	"Precision bits: histogram=%u transform=%u cache=%u\n"
-	"Lossless features:%s%s%s%s\nColors: %s%u",
-	o.width, o.height, s.coded_size,
-	(unsigned)s.coded_size * 8. / (uint32_t)(o.width * o.height),
-	s.lossless_hdr_size, s.lossless_data_size,
-	A && WebPPictureHasTransparency(&o) ? "yes" : "no",
-	s.histogram_bits, s.transform_bits, s.cache_bits,
-	F ? F & 1 ? " prediction" : "" : " none",
-	F && F & 2 ? " cross-color" : "", F && F & 4 ? " subtract-green" : "",
-	F && F & 8 ? " palette" : "", C ? "" : ">", C ? C : 256);
-    WebPPictureFree(&o);
-#endif // FROMWEBP
-    EC(usestdout ? "stdout" : outname)
-    if(usepipe || !--argc) return 0;
-    if(outname) {
-	free(outname);
-	outname = 0;
-    }
-    argv++;
-    OPENR(0)
-} }
+  return ret;
+}

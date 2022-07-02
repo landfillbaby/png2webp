@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+if cd libwebp; then
+	echo 'configuring libwebp...'
+	./autogen.sh
+	./configure --disable-near-lossless
+	echo 'configured libwebp'
+	cd ..
+else
+	echo 'missing libwebp!'
+	exit 1
+fi
+if cd libpng; then
+	echo 'configuring libpng...'
+	cp scripts/pnglibconf.h.prebuilt pnglibconf.h
+	./configure
+	echo 'configured libpng'
+	cd ..
+else
+	echo 'missing libpng!'
+	exit 1
+fi
+if cd zlib; then
+	echo 'configuring zlib...'
+	./configure
+	echo 'configured zlib'
+	cd ..
+else
+	echo 'missing zlib!'
+	exit 1
+fi

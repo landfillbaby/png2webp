@@ -1,0 +1,55 @@
+see also the TODO comments in the files themselves
+
+add some flags to libpng configure. no phys and other useless stuff
+
+minimize static build by making strings match some library one where possible
+
+rewrite w2p error handling to avoid the openwdone nonsense
+try to minimise null frees without making a bigger exe
+maybe no gotos at all, in the same order, and let the compiler figure it out?
+
+rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
+support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
+
+negative cli flags?
+
+look into other PNG interfaces, maybe make a simple custom one
+didn't like libspng. try lodepng?
+maybe option to use libwebp imageio for input and output
+just be a wrapper and nothing else
+
+restrict const register static etc? or just rely on clang
+
+-DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
+
+try to figure out how to use clang-cl on windows instead of msys2
+it's in the native tools %path% now
+make a separate build batch for it (or cmake?)
+use asm zlib and libpng code, or no? (make optional?)
+honestly just make a better build script!!!
+make sure to -DWEBP_USE_THREAD unless -DNOTHREADS is passed by the user
+
+sync old private dropbox version with git or delete it
+
+versions for newer lossless image formats
+jxl
+webp2 once it's released. see name collision comment
+
+maybe for comparison, jxl's predecessors:
+flif -> fuif -> jxl <- pik
+
+maybe try heif/heic/avif encoders, probably not great for lossless:
+heic: libheif with backends:
+	libde265? same author but only compatible with decoding?
+	libx265
+avif:
+	frontends (try without backends too?):
+		libheif	again
+		libavif	official
+	backends:
+		libaom	slow, official
+		rav1e	fast, "safe" (lying), exe or lib? rust not c
+
+netpbm interface version of pamtowebp and webptopam, get them to add it?
+also make pamtorgbapam (like `pamtoavs|avstopam`)?
+pamtorgbpam would basically be ppmtoppm

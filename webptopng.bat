@@ -1,4 +1,4 @@
 @ECHO OFF
-"%~dpn0.exe" -bv -- %*
+"%~dp0png2webp.exe" -rv -- %*
 IF %ERRORLEVEL% NEQ 0 PAUSE
 EXIT /B %ERRORLEVEL%
