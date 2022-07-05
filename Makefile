@@ -92,7 +92,10 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/quant_levels_utils.c \
 	libwebp/src/utils/random_utils.c libwebp/src/utils/rescaler_utils.c \
 	libwebp/src/utils/thread_utils.c libwebp/src/utils/utils.c
+petimestamp: petimestamp.c
+png2webp_timestamped: png2webp petimestamp
+	./petimestamp png2webp.exe ${shell git show -s --format=%ct}
 install: png2webp
 	${INSTALL} $^ ${DESTDIR}${PREFIX}/bin/
 clean:
-	${RM} png2webp
+	${RM} png2webp petimestamp
