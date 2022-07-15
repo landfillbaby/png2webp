@@ -1,15 +1,17 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.0.1"
-#include <assert.h>
+#define VERSION "v1.0.2"
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <setjmp.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if CHAR_BIT != 8
+#error "char isn't 8-bit"
+#endif
 #if __STDC_VERSION__ < 201112L && !defined NOFOPENX
 #define NOFOPENX
 #endif
@@ -65,7 +67,7 @@ static bool exact = 0, force = 0, verbose = 0;
 #define OP (op ? op : "<stdout>")
 static FILE *openr(char *ip) {
   PFV("Decoding %s ...", IP);
-  if(!ip) return stdin; // TODO: char **ip; *ip = "<stdin>" ?
+  if(!ip) return stdin;
   FILE *fp;
 #ifdef NOFOPENX
   int fd = open(ip, O_RDONLY | O_BINARY);
@@ -88,7 +90,7 @@ static FILE *openr(char *ip) {
 }
 static FILE *openw(char *op) {
   PFV("Encoding %s ...", OP);
-  if(!op) return stdout; // TODO: char **op; *op = "<stdout>" ?
+  if(!op) return stdout;
   FILE *fp;
 #define EO(x) \
   if(!(x)) { \
@@ -104,7 +106,7 @@ static FILE *openw(char *op) {
     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 #endif
   );
-  EO(fd != -1) // TODO: gotos?
+  EO(fd != -1)
   if(!(fp = fdopen(fd, WB))) {
     PF("ERROR opening %s for %s: %s", op, force ? "writing" : "creation",
       strerror(errno));
@@ -126,11 +128,24 @@ static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
   if(!fwrite(d, s, 1, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
 }
-/* TODO?
-static void pngflush(png_struct *p) { (void)p; }
-equivalent to the default but may generate smaller static code:
-static void pngflush(png_struct *p) { fflush(png_get_io_ptr(p)); }
-*/
+static void pngflush(png_struct *p) {
+#ifdef DOFLUSH
+  fflush(png_get_io_ptr(p));
+#else
+  (void)p;
+#endif
+}
+static void pngrerr(png_struct *p, const char *s) {
+  PF("ERROR reading %s: %s", (char *)png_get_error_ptr(p), s);
+  png_longjmp(p, 1);
+}
+static void pngwerr(png_struct *p, const char *s) {
+  PF("ERROR writing %s: %s", (char *)png_get_error_ptr(p), s);
+  png_longjmp(p, 1);
+}
+static void pngwarn(png_struct *p, const char *s) {
+  PF("Warning: %s: %s", (char *)png_get_error_ptr(p), s);
+}
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
 }
@@ -144,7 +159,7 @@ static bool p2w(char *ip, char *op) {
   if(!fp) return 1;
   uint32_t *b = 0;
   png_info *n = 0;
-  char *k[VP8_ENC_ERROR_LAST - 1 /* 3 */] = {"Out of memory",
+  char *k[] = {"Out of memory",
     "???", // oom flushing bitstream, unused in libwebp
     "???", // null param
     "Broken config, file a bug report",
@@ -153,8 +168,8 @@ static bool p2w(char *ip, char *op) {
     "I/O error",
     "???", // lossy
     "???"}; // cancelled
-  png_struct *p = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-  // ^ TODO: custom error functions?
+  png_struct *p =
+    png_create_read_struct(PNG_LIBPNG_VER_STRING, ip, pngrerr, pngwarn);
   if(!p) {
     PF("ERROR reading %s: %s", IP, *k);
     goto p2w_close;
@@ -179,11 +194,12 @@ static bool p2w(char *ip, char *op) {
   int bitdepth, colortype;
   png_get_IHDR(p, n, &width, &height, &bitdepth, &colortype, 0, 0, 0);
   if(width > 16383 || height > 16383) {
-    PF("ERROR reading %s: Image too big (%u x %u, max. 16383 x 16383 px)", IP,
-      width, height);
+    PF("ERROR reading %s: Image too big (%" PRIu32 " x %" PRIu32
+       ", max. 16383 x 16383 px)",
+      IP, width, height);
     goto p2w_close;
   }
-  if(bitdepth > 8)
+  if((unsigned)bitdepth > 8)
     PF("Warning: %s is 16-bit, will be downsampled to 8-bit", IP);
   bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
 #ifdef FIXEDGAMMA
@@ -225,7 +241,7 @@ static bool p2w(char *ip, char *op) {
     PF("ERROR reading %s: %s", IP, *k);
     goto p2w_close;
   }
-  for(int x = passes; x; x--) {
+  for(unsigned x = (unsigned)passes; x; x--) {
     uint8_t *w = (uint8_t *)b;
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
@@ -235,23 +251,23 @@ static bool p2w(char *ip, char *op) {
   png_read_end(p, 0);
   png_destroy_read_struct(&p, &n, 0);
   fclose(fp);
-  char *colors[7] = {
+  char *c[] = {
     "greyscale", "???", "RGB", "paletted", "greyscale + alpha", "???", "RGBA"};
-  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
-      "Format: %u-bit %s (%u)%s%s\nGamma: %.5g",
+  PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
+      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
     IP, width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
-    (unsigned)colortype < 7 ? colors[colortype] : "???", colortype,
-    trns ? ", with transparency" : "", passes > 1 ? ", interlaced" : "", GAMMA);
+    c[(unsigned)colortype], trns ? ", with transparency" : "",
+    (unsigned)passes > 1 ? ", interlaced" : "", GAMMA);
   trns = trns || (colortype & PNG_COLOR_MASK_ALPHA);
   if(!(fp = openw(op))) goto p2w_free;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
     .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
-    .stats = verbose ? &s : 0}; // TODO: memset? WebPPictureInit?
+    .stats = verbose ? &s : 0}; // TODO: WebPPictureInit?
   // progress_hook only reports 1, 5, 90, 100 for lossless
   if(!WebPEncode(
        &(WebPConfig){
-	 // TODO: memset? WebpConfigInit?
+	 // TODO: WebpConfigInit?
 	 1, 100, 6, // lossless, max
 	 WEBP_HINT_GRAPH, // 16-bit is only for alpha on lossy
 #ifndef NOTHREADS
@@ -276,10 +292,10 @@ static bool p2w(char *ip, char *op) {
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
-  PFV("Info: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n"
-      "Header size: %u, image data size: %u\nUses alpha: %s\n"
-      "Precision bits: histogram=%u transform=%u cache=%u\n"
-      "Lossless features:%s%s%s%s\nColors: %s%u",
+  PFV("Info: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n\
+Header size: %u, image data size: %u\nUses alpha: %s\n\
+Precision bits: histogram=%u transform=%u cache=%u\n\
+Lossless features:%s%s%s%s\nColors: %s%u",
     OP, o.width, o.height, s.lossless_size,
     (unsigned)s.lossless_size * 8. / (unsigned)(o.width * o.height),
     s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
@@ -289,14 +305,6 @@ static bool p2w(char *ip, char *op) {
     C ? "" : ">", C ? C : 256);
   return 0;
 }
-/* TODO: Try to compress somewhat better
-Ideally should palette if <=256 colors (in order of appearance),
-or at least try to palette when input WebP was,
-but that's not part of either libpng encoding or libwebp decoding.
-Maybe do this:
-WEBP_EXTERN int WebPGetColorPalette( // declared in libwebp utils/utils.h
-const struct WebPPicture *const, uint32_t *const);
-have 2 palettes. 1 in order of appearance and one sorted for bsearch */
 static bool w2p(char *ip, char *op) {
   FILE *fp = openr(ip);
   if(!fp) return 1;
@@ -304,11 +312,10 @@ static bool w2p(char *ip, char *op) {
   uint8_t *x = 0, *b = 0;
   png_struct *p = 0;
   png_info *n = 0;
-  uint8_t i[12]; // TODO: 16 when LOSSYISERROR and check for VP8[LX]?
+  uint8_t i[12];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
     "Invalid WebP", "???", "???", "???", "I/O error"};
   // unsupported feature, suspended, cancelled
-  // ^ TODO: check size like other k
   if(!fread(i, 12, 1, fp)) {
     PF("ERROR reading %s: %s", IP, k[6]);
     goto w2p_close;
@@ -334,7 +341,7 @@ static bool w2p(char *ip, char *op) {
   WebPBitstreamFeatures I;
 #else
   WebPDecoderConfig c = {.options.use_threads = 1};
-  // ^ TODO: memset? WebPInitDecoderConfig?
+  // ^ TODO: WebPInitDecoderConfig?
 #define I c.input
 #endif
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
@@ -343,8 +350,8 @@ static bool w2p(char *ip, char *op) {
     goto w2p_free;
   }
 #define V I.format
-#define W ((unsigned)I.width)
-#define H ((unsigned)I.height)
+#define W ((uint32_t)I.width)
+#define H ((uint32_t)I.height)
 #define A I.has_alpha
 #ifdef LOSSYISERROR
 #define FMTSTR
@@ -352,14 +359,14 @@ static bool w2p(char *ip, char *op) {
 #define ANMSTR "%s"
 #define ANMARG , "animat"
 #else
-  char *formats[] = {"undefined/mixed", "lossy", "lossless"};
-#define FMTSTR "\nFormat: %s (%d)"
-#define FMTARG , (unsigned)V < 3 ? formats[V] : "???", V
+  char *f[] = {"undefined/mixed", "lossy", "lossless"};
+#define FMTSTR "\nFormat: %s"
+#define FMTARG , f[V]
 #define ANMSTR "animat"
 #define ANMARG
 #endif
-  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
-      "Uses alpha: %s" FMTSTR,
+  PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
+      "\nSize: %zu bytes (%.15g bpp)\nUses alpha: %s" FMTSTR,
     IP, W, H, l, (double)l * 8 / (W * H), A ? "yes" : "no" FMTARG);
   if(I.has_animation) {
     PF("ERROR reading %s: Unsupported feature: " ANMSTR "ion", IP ANMARG);
@@ -400,7 +407,7 @@ static bool w2p(char *ip, char *op) {
   x = 0;
   if(!(fp = openw(op))) goto w2p_free;
   openwdone = !!op;
-  p = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+  p = png_create_write_struct(PNG_LIBPNG_VER_STRING, op, pngwerr, pngwarn);
   if(!p) {
     PF("ERROR writing %s: %s", OP, *k);
     goto w2p_close;
@@ -421,7 +428,7 @@ static bool w2p(char *ip, char *op) {
     return 1;
   }
   pnglen = 0;
-  png_set_write_fn(p, fp, pngwrite, 0); // TODO: pngflush?
+  png_set_write_fn(p, fp, pngwrite, pngflush);
   png_set_filter(p, 0, PNG_ALL_FILTERS);
   png_set_compression_level(p, 9);
   // png_set_compression_memlevel(p, 9);
@@ -442,14 +449,13 @@ static bool w2p(char *ip, char *op) {
     PF("ERROR closing %s: %s", OP, strerror(errno));
     goto w2p_free;
   }
-  PFV("Info: %s:\nDimensions: %u x %u\nSize: %zu bytes (%.15g bpp)\n"
-      "Format: %u-bit %s (%u)%s%s\nGamma: %.5g",
-    OP, W, H, pnglen, (double)pnglen * 8 / (uint32_t)(W * H), 8,
-    A ? "RGBA" : "RGB", A ? 6 : 2, "", "", 1 / 2.2);
+  PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
+      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
+    OP, W, H, pnglen, (double)pnglen * 8 / (W * H), 8, A ? "RGBA" : "RGB", "",
+    "", 1 / 2.2);
   return 0;
 }
 int main(int argc, char **argv) {
-  static_assert(CHAR_BIT == 8, "char isn't 8-bit");
   { // should be optimized out
     uint32_t endian;
     memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);

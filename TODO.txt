@@ -22,6 +22,8 @@ restrict const register static etc? or just rely on clang
 
 -DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
 
+time_t stuff in exestamp.c
+
 try to figure out how to use clang-cl on windows instead of msys2
 it's in the native tools %path% now
 make a separate build batch for it (or cmake?)
