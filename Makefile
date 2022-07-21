@@ -27,12 +27,15 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/powerpc/filter_vsx_intrinsics.c libpng/powerpc/powerpc_init.c \
 	zlib/adler32.c zlib/crc32.c zlib/deflate.c zlib/infback.c \
 	zlib/inffast.c zlib/inflate.c zlib/inftrees.c zlib/trees.c \
-	zlib/zutil.c libwebp/src/dec/alpha_dec.c libwebp/src/dec/buffer_dec.c \
-	libwebp/src/dec/frame_dec.c libwebp/src/dec/idec_dec.c \
-	libwebp/src/dec/io_dec.c libwebp/src/dec/quant_dec.c \
-	libwebp/src/dec/tree_dec.c libwebp/src/dec/vp8l_dec.c \
-	libwebp/src/dec/vp8_dec.c libwebp/src/dec/webp_dec.c \
-	libwebp/src/dsp/alpha_processing.c \
+	zlib/zutil.c libwebp/sharpyuv/sharpyuv.c \
+	libwebp/sharpyuv/sharpyuv_csp.c libwebp/sharpyuv/sharpyuv_dsp.c \
+	libwebp/sharpyuv/sharpyuv_gamma.c libwebp/sharpyuv/sharpyuv_neon.c \
+	libwebp/sharpyuv/sharpyuv_sse2.c libwebp/src/dec/alpha_dec.c \
+	libwebp/src/dec/buffer_dec.c libwebp/src/dec/frame_dec.c \
+	libwebp/src/dec/idec_dec.c libwebp/src/dec/io_dec.c \
+	libwebp/src/dec/quant_dec.c libwebp/src/dec/tree_dec.c \
+	libwebp/src/dec/vp8l_dec.c libwebp/src/dec/vp8_dec.c \
+	libwebp/src/dec/webp_dec.c libwebp/src/dsp/alpha_processing.c \
 	libwebp/src/dsp/alpha_processing_mips_dsp_r2.c \
 	libwebp/src/dsp/alpha_processing_neon.c \
 	libwebp/src/dsp/alpha_processing_sse2.c \

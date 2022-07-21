@@ -26,15 +26,9 @@
 #define _CRT_NONSTDC_NO_WARNINGS
 #include <fcntl.h>
 #include <io.h>
-#define RB "rb"
-#define WB "wb"
-#define XB "wbx"
 #else
 #include <unistd.h>
 #define setmode(x, y) 0
-#define RB "r"
-#define WB "w"
-#define XB "wx"
 #endif
 #include "png.h"
 #include "webp/decode.h"
@@ -75,13 +69,13 @@ static FILE *openr(char *ip) {
     PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
     return 0;
   }
-  if(!(fp = fdopen(fd, RB))) {
+  if(!(fp = fdopen(fd, "rb"))) {
     PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
     close(fd);
     return 0;
   }
 #else
-  if(!(fp = fopen(ip, RB))) {
+  if(!(fp = fopen(ip, "rb"))) {
     PF("ERROR opening %s for %s: %s", ip, "reading", strerror(errno));
     return 0;
   }
@@ -107,7 +101,7 @@ static FILE *openw(char *op) {
 #endif
   );
   EO(fd != -1)
-  if(!(fp = fdopen(fd, WB))) {
+  if(!(fp = fdopen(fd, "wb"))) {
     PF("ERROR opening %s for %s: %s", op, force ? "writing" : "creation",
       strerror(errno));
     close(fd);
@@ -115,7 +109,7 @@ static FILE *openw(char *op) {
     return 0;
   }
 #else
-  EO(fp = fopen(op, force ? WB : XB))
+  EO(fp = fopen(op, force ? "wb" : "wbx"))
 #endif
   return fp;
 }
@@ -167,7 +161,7 @@ static bool p2w(char *ip, char *op) {
     "???", "???", // lossy
     "I/O error",
     "???", // lossy
-    "???"}; // cancelled
+    "???"}; // canceled
   png_struct *p =
     png_create_read_struct(PNG_LIBPNG_VER_STRING, ip, pngrerr, pngwarn);
   if(!p) {
@@ -251,33 +245,33 @@ static bool p2w(char *ip, char *op) {
   png_read_end(p, 0);
   png_destroy_read_struct(&p, &n, 0);
   fclose(fp);
-  char *c[] = {
+  char *f[] = {
     "greyscale", "???", "RGB", "paletted", "greyscale + alpha", "???", "RGBA"};
   PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
       "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
     IP, width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
-    c[(unsigned)colortype], trns ? ", with transparency" : "",
+    f[(unsigned)colortype], trns ? ", with transparency" : "",
     (unsigned)passes > 1 ? ", interlaced" : "", GAMMA);
-  trns = trns || (colortype & PNG_COLOR_MASK_ALPHA);
+  WebPConfig c;
+  if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100)) {
+    PF("ERROR writing %s: %s", OP, k[3]);
+    goto p2w_free;
+  }
   if(!(fp = openw(op))) goto p2w_free;
+  c.lossless = 1;
+  c.method = 6;
+#ifndef NOTHREADS
+  c.thread_level = 1; // doesn't seem to affect output
+#endif
+  c.exact = exact;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
     .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
-    .stats = verbose ? &s : 0}; // TODO: WebPPictureInit?
+    .stats = verbose ? &s : 0};
   // progress_hook only reports 1, 5, 90, 100 for lossless
-  if(!WebPEncode(
-       &(WebPConfig){
-	 // TODO: WebpConfigInit?
-	 1, 100, 6, // lossless, max
-	 WEBP_HINT_GRAPH, // 16-bit is only for alpha on lossy
-#ifndef NOTHREADS
-	 .thread_level = 1, // doesn't seem to affect output
-#endif
-	 .near_lossless = 100, // don't modify visible pixels
-	 .exact = exact, // see `-e`
-	 .pass = 1, .segments = 1 // unused, for WebPValidateConfig
-       },
-       &o)) {
+  trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
+    WebPPictureHasTransparency(&o);
+  if(!WebPEncode(&c, &o)) {
     PF("ERROR writing %s: %s", OP, k[o.error_code - 1]);
     fclose(fp);
   p2w_rm:
@@ -288,7 +282,6 @@ static bool p2w(char *ip, char *op) {
     PF("ERROR closing %s: %s", OP, strerror(errno));
     goto p2w_rm;
   }
-  trns = trns && WebPPictureHasTransparency(&o);
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
@@ -315,7 +308,7 @@ static bool w2p(char *ip, char *op) {
   uint8_t i[12];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
     "Invalid WebP", "???", "???", "???", "I/O error"};
-  // unsupported feature, suspended, cancelled
+  // unsupported feature, suspended, canceled
   if(!fread(i, 12, 1, fp)) {
     PF("ERROR reading %s: %s", IP, k[6]);
     goto w2p_close;
@@ -341,7 +334,6 @@ static bool w2p(char *ip, char *op) {
   WebPBitstreamFeatures I;
 #else
   WebPDecoderConfig c = {.options.use_threads = 1};
-  // ^ TODO: WebPInitDecoderConfig?
 #define I c.input
 #endif
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
@@ -456,7 +448,7 @@ static bool w2p(char *ip, char *op) {
   return 0;
 }
 int main(int argc, char **argv) {
-  { // should be optimized out
+  { // should optimize out
     uint32_t endian;
     memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
     E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,

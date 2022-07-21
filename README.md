@@ -38,11 +38,11 @@ wrappers do 2 things:
 ## Prebuilt libpng and libwebp
 Install `libpng` and `libwebp`, then just run:
 
-    cc -O3 -s -o png2webp png2webp.c -lpng -lwebp
+    cc -O3 -DNDEBUG -s -o png2webp png2webp.c -lpng -lwebp
 
 Or on Windows MSVC:
 
-    cl.exe /nologo /std:c11 /O2 /Ob3 png2webp.c /link libpng.dll libwebp.dll
+    cl.exe /nologo /std:c11 /O2 /Ob3 /DNDEBUG /I libpng /I libwebp/src png2webp.c libpng16.lib zlib.lib libwebp.lib
 
 ## Static build
 Download the sources for libpng, zlib, and libwebp,
@@ -71,7 +71,7 @@ Define these as preprocessor macros:
 
 `NOFOPENX`: If C11's `fopen("wbx")` parameter isn't supported on your system,
 problems happen without `-f`: system errors, overwriting anyway, etc.
-It's undefined behaviour. This forces a workaround, used automatically
+It's undefined behavior. This forces a workaround, used automatically
 when compiling with no C11 support, with POSIX `open()` and `fdopen()`.
 
 `NOVLA`: Use `malloc()`/`free()` instead of a C99 variable-length array
