@@ -31,7 +31,7 @@ equivalent to `cwebp -z 9`.
 
 ## Drag and drop
 The `.bat` (Windows) and `.sh` (Unix-like) wrappers do 2 things:
-* Specify `-v --`.
+* Specify `-v --` (`-rv --` in the case of `webptopng.*`).
 * Wait for user input if errors happen.
 
 Just keep them in the same folder as the program itself,
