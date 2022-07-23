@@ -29,10 +29,14 @@ equivalent to `cwebp -z 9`.
 
 `--`: Explicitly stop parsing options.
 
-For drag-and-drop usage, the provided `.bat` (Windows) and `.sh` (Unix-like)
-wrappers do 2 things:
+## Drag and drop
+The `.bat` (Windows) and `.sh` (Unix-like) wrappers do 2 things:
 * Specify `-v --`.
 * Wait for user input if errors happen.
+
+Just keep them in the same folder as the program itself,
+and drag the image files onto the corresponding batch file.
+Rename the wrappers if you want, but don't rename the program.
 
 # Compiling
 ## Prebuilt libpng and libwebp
