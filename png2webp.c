@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.0.4"
+#define VERSION "v1.0.5"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -319,6 +319,14 @@ static bool w2p(char *ip, char *op) {
   }
   size_t l = ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
   // ^ RIFF header size
+  if(l <= 12
+#ifdef SSIZE_MAX
+    || l - 12 > SSIZE_MAX
+#endif
+  ) {
+    PF("ERROR reading %s: %s", IP, k[2]);
+    goto w2p_close;
+  }
   x = malloc(l);
   if(!x) {
     PF("ERROR reading %s: %s", IP, *k);
