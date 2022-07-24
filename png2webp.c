@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.0.5"
+#define VERSION "v1.0.6"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -317,13 +317,9 @@ static bool w2p(char *ip, char *op) {
     PF("ERROR reading %s: %s", IP, k[2]);
     goto w2p_close;
   }
-  size_t l = ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
-  // ^ RIFF header size
-  if(l <= 12
-#ifdef SSIZE_MAX
-    || l - 12 > SSIZE_MAX
-#endif
-  ) {
+  uint32_t l = // RIFF header size
+    ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
+  if(l < 13 || l > 0xfffffffe) { // TODO: 28?
     PF("ERROR reading %s: %s", IP, k[2]);
     goto w2p_close;
   }
@@ -333,7 +329,17 @@ static bool w2p(char *ip, char *op) {
     goto w2p_close;
   }
   memcpy(x, i, 12); // should optimize out
-  if(!fread(x + 12, l - 12, 1, fp)) {
+  uint8_t *z = x + 12;
+  uint32_t m = l - 12;
+  if(m > 0x7fffffff) {
+    if(!fread(z, 0x7fffffff, 1, fp)) {
+      PF("ERROR reading %s: %s", IP, k[6]);
+      goto w2p_close;
+    }
+    z += 0x7fffffff;
+    m -= 0x7fffffff;
+  }
+  if(!fread(z, m, 1, fp)) {
     PF("ERROR reading %s: %s", IP, k[6]);
     goto w2p_close;
   }
@@ -365,8 +371,8 @@ static bool w2p(char *ip, char *op) {
 #define ANMSTR "animat"
 #define ANMARG
 #endif
-  PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
-      "\nSize: %zu bytes (%.15g bpp)\nUses alpha: %s" FMTSTR,
+  PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
+      " bytes (%.15g bpp)\nUses alpha: %s" FMTSTR,
     IP, W, H, l, (double)l * 8 / (W * H), A ? "yes" : "no" FMTARG);
   if(I.has_animation) {
     PF("ERROR reading %s: Unsupported feature: " ANMSTR "ion", IP ANMARG);
