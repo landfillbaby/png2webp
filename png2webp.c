@@ -40,7 +40,7 @@ Usage:\n\
 png2webp [-refv-] INFILE ...\n\
 png2webp -p[refv-] [{INFILE|-} [OUTFILE|-]]\n\
 \n\
--p: Work with a single file, allowing Piping from stdin or to stdout,\n\
+-p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
     `INFILE` and `OUTFILE` default to stdin and stdout respectively,\n\
     or explicitly as \"-\".\n\
@@ -157,7 +157,7 @@ static bool p2w(char *ip, char *op) {
     "???", // oom flushing bitstream, unused in libwebp
     "???", // null param
     "Broken config, file a bug report",
-    "???", // image too big (already checked)
+    "???", // image too big (checked on PNG input)
     "???", "???", // lossy
     "I/O error",
     "???", // lossy
@@ -246,7 +246,7 @@ static bool p2w(char *ip, char *op) {
   png_destroy_read_struct(&p, &n, 0);
   fclose(fp);
   char *f[] = {
-    "greyscale", "???", "RGB", "paletted", "greyscale + alpha", "???", "RGBA"};
+    "grayscale", "???", "RGB", "paletted", "grayscale + alpha", "???", "RGBA"};
   PFV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
       "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
     IP, width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
@@ -308,7 +308,7 @@ static bool w2p(char *ip, char *op) {
   uint8_t i[12];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
     "Invalid WebP", "???", "???", "???", "I/O error"};
-  // unsupported feature, suspended, canceled
+  // ^ unsupported feature, suspended, canceled
   if(!fread(i, 12, 1, fp)) {
     PF("ERROR reading %s: %s", IP, k[6]);
     goto w2p_close;
@@ -459,8 +459,11 @@ int main(int argc, char **argv) {
   { // should optimize out
     uint32_t endian;
     memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
-    E(endian == 0xAABBCCDD || endian == 0xDDCCBBAA,
-      "32-bit mixed-endianness (%X) not supported", endian)
+    if(endian == 0xAABBCCDD)
+      fputs("Warning: big-endian support is untested\n", stderr); // see TODO
+    else
+      E(endian == 0xDDCCBBAA, "32-bit mixed-endianness (%X) not supported",
+	endian)
   }
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
