@@ -12,6 +12,9 @@
 #if CHAR_BIT != 8
 #error "char isn't 8-bit"
 #endif
+#if SIZE_MAX < 0xffffffff
+#error "size_t isn't at least 32-bit"
+#endif
 #if __STDC_VERSION__ < 201112L && !defined NOFOPENX
 #define NOFOPENX
 #endif
@@ -319,7 +322,7 @@ static bool w2p(char *ip, char *op) {
   }
   uint32_t l = // RIFF header size
     ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
-  if(l < 13 || l > 0xfffffffe) { // TODO: 28?
+  if(l < 28 || l > 0xfffffffe) {
     PF("ERROR reading %s: %s", IP, k[2]);
     goto w2p_close;
   }
@@ -331,6 +334,8 @@ static bool w2p(char *ip, char *op) {
   memcpy(x, i, 12); // should optimize out
   uint8_t *z = x + 12;
   uint32_t m = l - 12;
+  // some fread implementations actually use int32_t even on 64-bit
+  // e.g. Android: https://issuetracker.google.com/issues/240139009
   if(m > 0x7fffffff) {
     if(!fread(z, 0x7fffffff, 1, fp)) {
       PF("ERROR reading %s: %s", IP, k[6]);
