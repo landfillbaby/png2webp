@@ -96,7 +96,7 @@ static FILE *openw(char *op) {
     return 0; \
   }
 #ifdef NOFOPENX
-  int fd = open(op, O_WRONLY | O_CREAT | O_TRUNC | (!force * O_EXCL) | O_BINARY,
+  int fd = open(op, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL) | O_BINARY,
 #ifdef _WIN32
     S_IREAD | S_IWRITE
 #else
@@ -293,7 +293,7 @@ Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
     OP, o.width, o.height, s.lossless_size,
-    (unsigned)s.lossless_size * 8. / (unsigned)(o.width * o.height),
+    (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
     s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
     s.histogram_bits, s.transform_bits, s.cache_bits,
     F ? F & 1 ? " prediction" : "" : " none", F && F & 2 ? " cross-color" : "",
@@ -334,9 +334,8 @@ static bool w2p(char *ip, char *op) {
   memcpy(x, i, 12); // should optimize out
   uint8_t *z = x + 12;
   uint32_t m = l - 12;
-  // some fread implementations actually use int32_t even on 64-bit
-  // e.g. Android: https://issuetracker.google.com/issues/240139009
-  if(m > 0x7fffffff) {
+#if defined __ANDROID__ && __ANDROID_API__ < 33
+  if(m > 0x7fffffff) { // https://issuetracker.google.com/240139009
     if(!fread(z, 0x7fffffff, 1, fp)) {
       PF("ERROR reading %s: %s", IP, k[6]);
       goto w2p_close;
@@ -344,6 +343,7 @@ static bool w2p(char *ip, char *op) {
     z += 0x7fffffff;
     m -= 0x7fffffff;
   }
+#endif
   if(!fread(z, m, 1, fp)) {
     PF("ERROR reading %s: %s", IP, k[6]);
     goto w2p_close;
