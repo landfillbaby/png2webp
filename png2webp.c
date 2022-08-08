@@ -146,6 +146,12 @@ static void pngwarn(png_struct *p, const char *s) {
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
 }
+static int progress(int percent, const WebPPicture *x) {
+  (void)x;
+  fprintf(stderr, "\r%3d%% [%-60.*s]", percent, percent * 3 / 5,
+    (char[60]){"############################################################"});
+  return 1;
+}
 #define E(x, ...) \
   if(!(x)) { \
     PF("ERROR " __VA_ARGS__); \
@@ -270,25 +276,25 @@ static bool p2w(char *ip, char *op) {
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
     .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
-    .stats = verbose ? &s : 0};
-  // progress_hook only reports 1, 5, 90, 100 for lossless
+    .stats = verbose ? &s : 0, .progress_hook = verbose ? progress : 0};
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
     WebPPictureHasTransparency(&o);
   if(!WebPEncode(&c, &o)) {
-    PF("ERROR writing %s: %s", OP, k[o.error_code - 1]);
+#define PFN(x, ...) PF(verbose ? "\n" x "\n" : x, __VA_ARGS__)
+    PFN("ERROR writing %s: %s", OP, k[o.error_code - 1]);
     fclose(fp);
   p2w_rm:
     if(op) remove(op);
     goto p2w_free;
   }
   if(fclose(fp)) {
-    PF("ERROR closing %s: %s", OP, strerror(errno));
+    PFN("ERROR closing %s: %s", OP, strerror(errno));
     goto p2w_rm;
   }
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
-  PFV("Info: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n\
+  PFV("\nInfo: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n\
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",

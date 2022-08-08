@@ -9,6 +9,7 @@ honestly just make a better build script!!!
 make sure to -DWEBP_USE_THREAD unless -DNOTHREADS is passed by the user
 
 add some flags to libpng configure. no phys and other useless stuff
+WEBP_REDUCE_SIZE ?
 
 minimize static build by making strings match some library one where possible
 
