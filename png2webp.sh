@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-"${0%.sh}" -v -- "$@"
+PATH="$(dirname -- "$(readlink -f -- "$0")"):$PATH" png2webp -v -- "$@"
 ret=$?
 if [ $ret -ne 0 ]
 then
