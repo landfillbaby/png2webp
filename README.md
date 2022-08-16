@@ -89,9 +89,6 @@ I'm pretty sure it only uses 2 threads anyway.
 `LOSSYISERROR`: Give an error when trying to decode lossy WebP files.
 This means no lossy VP8 code in static globally optimized builds!
 
-`FIXEDGAMMA`: On by default in Makefile.
-Use libpng's fixed-point gamma interface for faster and smaller static builds.
-
 # Why?
 I wanted a smaller, faster, and less platform dependent way to convert old
 PNG images to the more efficient lossless WebP format,

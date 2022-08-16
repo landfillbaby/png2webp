@@ -8,7 +8,7 @@ CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG -march=armv8-a+crc
 else
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG
 endif
-CFLAGS += -Ilibpng -Izlib -Ilibwebp -Ilibwebp/src -DFIXEDGAMMA
+CFLAGS += -Ilibpng -Izlib -Ilibwebp -Ilibwebp/src
 CFLAGS += -DPNG_ARM_NEON -DPNG_MIPS_MSA -DPNG_INTEL_SSE -DPNG_POWERPC_VSX
 ifeq (${OS},Windows_NT)
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp

@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.0.7"
+#define VERSION "v1.0.8"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -148,8 +148,9 @@ static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
 }
 static int progress(int percent, const WebPPicture *x) {
   (void)x;
-  fprintf(stderr, "\r%3d%% [%-60.*s]", percent, percent * 3 / 5,
-    (char[60]){"############################################################"});
+  fprintf(stderr, "\r[%-60.*s] %u%%", (unsigned)percent * 3 / 5,
+    (char[60]){"############################################################"},
+    percent);
   return 1;
 }
 #define E(x, ...) \
@@ -205,17 +206,12 @@ static bool p2w(char *ip, char *op) {
   if((unsigned)bitdepth > 8)
     P("Warning: %s is 16-bit, will be downsampled to 8-bit", IP);
   bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
-#ifdef FIXEDGAMMA
-#define GAMMA ((uint32_t)gamma) / 1e5
   int32_t gamma = 45455;
-  if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma))
+  if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
+    if(gamma != 45455)
+      P("Warning: %s has nonstandard gamma of %.5g", IP, (uint32_t)gamma / 1e5);
     png_set_gamma_fixed(p, 22e4, gamma);
-#else
-#define GAMMA gamma
-  double gamma = 1 / 2.2;
-  if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA(p, n, &gamma))
-    png_set_gamma(p, 2.2, gamma);
-#endif
+  }
 #define S(x) png_set_##x(p)
   S(scale_16);
   S(expand);
@@ -257,10 +253,10 @@ static bool p2w(char *ip, char *op) {
   char *f[] = {
     "grayscale", "???", "RGB", "paletted", "grayscale + alpha", "???", "RGBA"};
   PV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
-     "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
+     "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s",
     IP, width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
     f[(unsigned)colortype], trns ? ", with transparency" : "",
-    (unsigned)passes > 1 ? ", interlaced" : "", GAMMA);
+    (unsigned)passes > 1 ? ", interlaced" : "");
   WebPConfig c;
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100)) {
     P("ERROR writing %s: %s", OP, k[3]);
@@ -294,11 +290,11 @@ static bool p2w(char *ip, char *op) {
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
-  PV("\nInfo: %s:\nDimensions: %u x %u\nSize: %u bytes (%.15g bpp)\n\
+  PV("\nInfo: %s:\nSize: %u bytes (%.15g bpp)\n\
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
-    OP, o.width, o.height, s.lossless_size,
+    OP, s.lossless_size,
     (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
     s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
     s.histogram_bits, s.transform_bits, s.cache_bits,
@@ -340,7 +336,7 @@ static bool w2p(char *ip, char *op) {
   memcpy(x, i, 12); // should optimize out
   uint8_t *z = x + 12;
   uint32_t m = l - 12;
-#if defined __ANDROID__ && __ANDROID_API__ < 33
+#if defined __ANDROID__ // TODO? && __ANDROID_API__ < 34
   if(m > 0x7fffffff) { // https://issuetracker.google.com/240139009
     if(!fread(z, 0x7fffffff, 1, fp)) {
       P("ERROR reading %s: %s", IP, k[6]);
@@ -466,10 +462,8 @@ static bool w2p(char *ip, char *op) {
     P("ERROR closing %s: %s", OP, strerror(errno));
     goto w2p_free;
   }
-  PV("Info: %s:\nDimensions: %" PRIu32 " x %" PRIu32
-     "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\nGamma: %.5g",
-    OP, W, H, pnglen, (double)pnglen * 8 / (W * H), 8, A ? "RGBA" : "RGB", "",
-    "", 1 / 2.2);
+  PV("Info: %s:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s", OP, pnglen,
+    (double)pnglen * 8 / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
 int main(int argc, char **argv) {
