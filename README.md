@@ -27,6 +27,8 @@ equivalent to `cwebp -z 9`.
 
 `-v`: Be verbose.
 
+`-t`: Print a progress bar even when stderr isn't a terminal (not for `-r`).
+
 `--`: Explicitly stop parsing options.
 
 ## Drag and drop
