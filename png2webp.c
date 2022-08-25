@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.1.0"
+#define VERSION "v1.1.1"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -130,11 +130,11 @@ static void pngflush(png_struct *p) {
   (void)p;
 #endif
 }
-static void pngrerr(png_struct *p, const char *s) {
+static PNG_NORETURN void pngrerr(png_struct *p, const char *s) {
   P("ERROR reading: %s", s);
   png_longjmp(p, 1);
 }
-static void pngwerr(png_struct *p, const char *s) {
+static PNG_NORETURN void pngwerr(png_struct *p, const char *s) {
   P("ERROR writing: %s", s);
   png_longjmp(p, 1);
 }
@@ -274,33 +274,33 @@ static bool p2w(char *ip, char *op) {
     .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
     WebPPictureHasTransparency(&o);
-  if(!WebPEncode(&c, &o)) {
-#define PN(x, ...) P(doprogress ? "\n" x "\n" : x, __VA_ARGS__)
-    PN("ERROR writing: %s", k[o.error_code - 1]);
+  int r = WebPEncode(&c, &o);
+  if(doprogress) putc('\n', stderr);
+  if(!r) {
+    P("ERROR writing: %s", k[o.error_code - 1]);
     fclose(fp);
   p2w_rm:
     if(op) remove(op);
     goto p2w_free;
   }
   if(fclose(fp)) {
-    PN("ERROR writing: %s", strerror(errno));
+    P("ERROR writing: %s", strerror(errno));
     goto p2w_rm;
   }
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
-  if(verbose)
-    PN("Output info:\nSize: %u bytes (%.15g bpp)\n\
+  PV("Output info:\nSize: %u bytes (%.15g bpp)\n\
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
-      s.lossless_size,
-      (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
-      s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
-      s.histogram_bits, s.transform_bits, s.cache_bits,
-      F ? F & 1 ? " prediction" : "" : " none",
-      F && F & 2 ? " cross-color" : "", F && F & 4 ? " subtract-green" : "",
-      F && F & 8 ? " palette" : "", C ? "" : ">", C ? C : 256);
+    s.lossless_size,
+    (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
+    s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
+    s.histogram_bits, s.transform_bits, s.cache_bits,
+    F ? F & 1 ? " prediction" : "" : " none", F && F & 2 ? " cross-color" : "",
+    F && F & 4 ? " subtract-green" : "", F && F & 8 ? " palette" : "",
+    C ? "" : ">", C ? C : 256);
   return 0;
 }
 static bool w2p(char *ip, char *op) {
