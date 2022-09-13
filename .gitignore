@@ -52,5 +52,7 @@ Mkfile.old
 dkms.conf
 
 # mine
+*~
 *.lnk
 /png2webp
+/exestamp

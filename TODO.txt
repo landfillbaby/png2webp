@@ -16,6 +16,7 @@ minimize static build by making strings match some library one where possible
 rewrite w2p error handling to avoid the openwdone nonsense
 try to minimize null frees without making a bigger exe
 maybe no gotos at all, in the same order, and let the compiler figure it out?
+same with p2w, just completely redo both
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
@@ -31,7 +32,10 @@ restrict const register static etc? or just rely on clang
 
 -DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
 
-time_t stuff in exestamp.c
+parallelize more, multiple conversions at once?
+needs no global pnglen, thread-safe strerror, total rewrite of terminal output
+
+time_t stuff in exestamp.c?
 
 sync old private dropbox version with git or delete it
 

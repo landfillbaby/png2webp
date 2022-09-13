@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.1.1"
+#define VERSION "v1.1.2"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -41,7 +41,7 @@ static int help(void) {
 \n\
 Usage:\n\
 png2webp [-refv-] INFILE ...\n\
-png2webp -p[refv-] [{INFILE|-} [OUTFILE|-]]\n\
+png2webp -p[refv-] [INFILE [OUTFILE]]\n\
 \n\
 -p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
@@ -272,10 +272,11 @@ static bool p2w(char *ip, char *op) {
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
     .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
     .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
+  // TODO? if(doprogress) fprintf(stderr, "[%-60.*s] %u%%", 0, "", 0);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
     WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
-  if(doprogress) putc('\n', stderr);
+  if(doprogress) fputc('\n', stderr);
   if(!r) {
     P("ERROR writing: %s", k[o.error_code - 1]);
     fclose(fp);

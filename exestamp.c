@@ -22,39 +22,33 @@ struct c99_static_assert {
 #endif
 #define P(x) fputs(x "\n", stderr)
 int main(int argc, char **argv) {
-  if(argc != 3 || *argv[2] < '0' || *argv[2] > '9') {
-  h:
+  char *n;
+  uint32_t t;
+  if(argc != 3 || *argv[2] < '0' || *argv[2] > '9' ||
+    ((void)(t = (uint32_t)strtoll(argv[2], &n, 0)), *n) || errno) {
     P("Usage: exestamp EXE STAMP\nEXE: Windows PE32(+) file\nSTAMP: \
 Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp");
     return -1;
   }
-  char *n;
-  uint32_t t = (uint32_t)strtoll(argv[2], &n, 0);
-  if(*n || errno) goto h;
   FILE *f = fopen(argv[1], "rb+");
   if(!f) {
     P("Couldn't open file");
     return 1;
   }
   uint8_t b[4];
-  if(!fread(b, 2, 1, f)) {
-  e:
+#define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
+  if(!fread(b, 2, 1, f) || memcmp(b, (char[2]){"MZ"}, 2) ||
+    F(f, 60, SEEK_SET) || !fread(b, 4, 1, f) || F(f, B, SEEK_SET) ||
+    !fread(b, 4, 1, f) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR) ||
+    !fread(b, 4, 1, f)) {
     P("Invalid Windows PE32(+) file");
     fclose(f);
     return 1;
   }
-#define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
-  if(memcmp(b, (char[2]){"MZ"}, 2) || F(f, 60, SEEK_SET) ||
-    !fread(b, 4, 1, f) || F(f, B, SEEK_SET) || !fread(b, 4, 1, f) ||
-    memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR))
-    goto e;
-#ifndef NO_PRINT_ORIG
-  if(!fread(b, 4, 1, f)) goto e;
   fprintf(stderr, "Original timestamp: %" PRIu32 "\n", B);
-  if(F(f, -4, SEEK_CUR)) goto e;
-#endif
-  if(!fwrite((uint8_t[]){t & 255, (t >> 8) & 255, (t >> 16) & 255, t >> 24}, 4,
-       1, f)) {
+  if(F(f, -4, SEEK_CUR) ||
+    !fwrite((uint8_t[]){t & 255, (t >> 8) & 255, (t >> 16) & 255, t >> 24}, 4,
+      1, f)) {
     P("Couldn't write new timestamp");
     fclose(f);
     return 1;
