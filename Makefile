@@ -1,7 +1,8 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
 uname_m := ${shell uname -m}
-ifeq (${uname_m},x86_64)
+cc11 := ${shell expr `${CC} -dumpversion|cut -d. -f1` \>= 11}
+ifeq (${uname_m}_v${cc11},x86_64_v1)
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG -march=x86-64-v2
 else ifeq (${uname_m},aarch64)
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG -march=armv8-a+crc
