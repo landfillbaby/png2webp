@@ -34,6 +34,7 @@ restrict const register static etc? or just rely on clang
 
 parallelize more, multiple conversions at once?
 needs no global pnglen, thread-safe strerror, total rewrite of terminal output
+maybe remove all global vars?
 
 time_t stuff in exestamp.c?
 
