@@ -1,17 +1,23 @@
 PREFIX ?= /usr/local
 INSTALL ?= install
-uname_m := ${shell uname -m}
-cc11 := ${shell expr `${CC} -dumpversion|cut -d. -f1` \>= 11}
-ifeq (${uname_m}_v${cc11},x86_64_v1)
-CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG -march=x86-64-v2
-else ifeq (${uname_m},aarch64)
-CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG -march=armv8-a+crc
+arch := $(shell uname -m)
+ifeq ($(arch),aarch64)
+CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=armv8-a+crc
 else
-CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -DNDEBUG
+define ccver :=
+printf '#ifdef __clang__\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
+'#if __clang_major__ > 11' '1' '#endif' '#elif defined __GNUC__' \
+'#if __GNUC__ > 10' '1' '#endif' '#endif' | $(CC) -E -P -x c -
+endef
+ifeq ($(arch)_v$(shell $(ccver)),x86_64_v1)
+CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=x86-64-v2
+else
+CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
-CFLAGS += -Ilibpng -Izlib -Ilibwebp -Ilibwebp/src
-CFLAGS += -DPNG_ARM_NEON -DPNG_MIPS_MSA -DPNG_INTEL_SSE -DPNG_POWERPC_VSX
-ifeq (${OS},Windows_NT)
+endif
+CPPFLAGS ?= -DNDEBUG
+CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src $(CPPFLAGS)
+ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
@@ -98,8 +104,8 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/thread_utils.c libwebp/src/utils/utils.c
 exestamp: exestamp.c
 png2webp_timestamped: png2webp exestamp
-	./exestamp png2webp.exe ${shell git show -s --format=%ct}
+	./exestamp png2webp.exe $(shell git show -s --format=%ct)
 install: png2webp
-	${INSTALL} $^ ${DESTDIR}${PREFIX}/bin/
+	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
 clean:
-	${RM} png2webp exestamp
+	$(RM) png2webp exestamp

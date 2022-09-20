@@ -31,11 +31,13 @@
 #include <io.h>
 #else
 #include <unistd.h>
-#define setmode(x, y) 0
 #endif
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
+#if defined __GNUC__ && !defined __clang__
+#pragma GCC diagnostic ignored "-Wclobbered"
+#endif
 static int help(void) {
   fputs("PNG2WebP " VERSION "\n\
 \n\
@@ -511,8 +513,10 @@ endflagloop:
     if(URGC > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0)) ||
       ((usestdout = (URGC < 2 || PIPEARG(1))) && isatty(1)))
       return help();
+#ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
     if(usestdout) setmode(1, O_BINARY);
+#endif
     if(!reverse && !doprogress) doprogress = isatty(2);
     return (reverse ? w2p : p2w)(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
   }
@@ -534,11 +538,13 @@ endflagloop:
 #ifdef NOVLA
 	char *op = malloc(len + 5);
 	E(op, "adding .%s extension to %s: Out of memory", "png", *argv)
-#else
+#elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
 	char op[len + 5];
 #pragma GCC diagnostic pop
+#else
+	char op[len + 5];
 #endif
 	memcpy(op, *argv, len); // the only real memcpy
 	memcpy(op + len, ".png", 5);
@@ -563,11 +569,13 @@ endflagloop:
 #ifdef NOVLA
 	char *op = malloc(len + 6);
 	E(op, "adding .%s extension to %s: Out of memory", "webp", *argv)
-#else
+#elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
 	char op[len + 6];
 #pragma GCC diagnostic pop
+#else
+	char op[len + 6];
 #endif
 	memcpy(op, *argv, len); // the only real memcpy
 	memcpy(op + len, ".webp", 6);
