@@ -205,12 +205,12 @@ static bool p2w(char *ip, char *op) {
       width, height);
     goto p2w_close;
   }
-  if((unsigned)bitdepth > 8) P("Warning: %s", "will be downsampled to 8-bit");
+  if((unsigned)bitdepth > 8) P("Warning: %s", "Downsampling to 8-bit");
   bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
   int32_t gamma = 45455;
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
-      P("Warning: nonstandard gamma: %.5g", (uint32_t)gamma / 1e5);
+      P("Warning: Nonstandard gamma: %.5g", (uint32_t)gamma / 1e5);
     png_set_gamma_fixed(p, 22e4, gamma);
   }
 #define S(x) png_set_##x(p)
@@ -471,7 +471,7 @@ int main(int argc, char **argv) {
     uint32_t endian;
     memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
     if(endian == 0xAABBCCDD)
-      P("Warning: %s", "big-endian support is untested"); // TODO
+      P("Warning: %s", "Big-endian support is untested"); // TODO
     else
       E(endian == 0xDDCCBBAA, "32-bit mixed-endianness (%X) not supported",
 	endian)
