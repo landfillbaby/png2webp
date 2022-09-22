@@ -32,7 +32,7 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp");
   }
   FILE *f = fopen(argv[1], "rb+");
   if(!f) {
-    P("Couldn't open file");
+    perror("ERROR opening file");
     return 1;
   }
   uint8_t b[4];
@@ -41,20 +41,20 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp");
     F(f, 60, SEEK_SET) || !fread(b, 4, 1, f) || F(f, B, SEEK_SET) ||
     !fread(b, 4, 1, f) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR) ||
     !fread(b, 4, 1, f)) {
-    P("Invalid Windows PE32(+) file");
+    P("ERROR: Invalid Windows PE32(+) file");
     fclose(f);
     return 1;
   }
-  fprintf(stderr, "Original timestamp: %" PRIu32 "\n", B);
+  printf("Original timestamp: %" PRIu32 "\n", B);
   if(F(f, -4, SEEK_CUR) ||
     !fwrite((uint8_t[]){t & 255, (t >> 8) & 255, (t >> 16) & 255, t >> 24}, 4,
       1, f)) {
-    P("Couldn't write new timestamp");
+    perror("ERROR writing new timestamp");
     fclose(f);
     return 1;
   }
   if(fclose(f)) {
-    P("Error while closing file");
+    perror("ERROR closing file");
     return 1;
   }
 }
