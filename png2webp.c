@@ -71,17 +71,17 @@ static FILE *openr(char *ip) {
 #ifdef NOFOPENX
   int fd = open(ip, O_RDONLY | O_BINARY);
   if(fd == -1) {
-    P("ERROR reading: %s", strerror(errno));
+    perror("ERROR reading");
     return 0;
   }
   if(!(fp = fdopen(fd, "rb"))) {
-    P("ERROR reading: %s", strerror(errno));
+    perror("ERROR reading");
     close(fd);
     return 0;
   }
 #else
   if(!(fp = fopen(ip, "rb"))) {
-    P("ERROR reading: %s", strerror(errno));
+    perror("ERROR reading");
     return 0;
   }
 #endif
@@ -93,7 +93,7 @@ static FILE *openw(char *op) {
   FILE *fp;
 #define EO(x) \
   if(!(x)) { \
-    P("ERROR writing: %s", strerror(errno)); \
+    perror("ERROR writing"); \
     return 0; \
   }
 #ifdef NOFOPENX
@@ -106,7 +106,7 @@ static FILE *openw(char *op) {
   );
   EO(fd != -1)
   if(!(fp = fdopen(fd, "wb"))) {
-    P("ERROR writing: %s", strerror(errno));
+    perror("ERROR writing");
     close(fd);
     remove(op);
     return 0;
@@ -287,7 +287,7 @@ static bool p2w(char *ip, char *op) {
     goto p2w_free;
   }
   if(fclose(fp)) {
-    P("ERROR writing: %s", strerror(errno));
+    perror("ERROR writing");
     goto p2w_rm;
   }
   free(b);
@@ -459,7 +459,7 @@ static bool w2p(char *ip, char *op) {
   free(b);
   b = 0;
   if(fclose(fp)) {
-    P("ERROR writing: %s", strerror(errno));
+    perror("ERROR writing");
     goto w2p_free;
   }
   PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s", pnglen,
