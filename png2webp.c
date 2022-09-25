@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.1.3"
+#define VERSION "v1.1.4"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
