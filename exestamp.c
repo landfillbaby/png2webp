@@ -20,14 +20,14 @@ struct c99_static_assert {
 };
 #define F fseeko
 #endif
-#define P(x) fputs(x "\n", stderr)
 int main(int argc, char **argv) {
   char *n;
   uint32_t t;
   if(argc != 3 || *argv[2] < '0' || *argv[2] > '9' ||
     ((void)(t = (uint32_t)strtoll(argv[2], &n, 0)), *n) || errno) {
-    P("Usage: exestamp EXE STAMP\nEXE: Windows PE32(+) file\nSTAMP: \
-Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp");
+    fputs("Usage: exestamp EXE STAMP\nEXE: Windows PE32(+) file\nSTAMP: \
+Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
+      stderr);
     return -1;
   }
   FILE *f = fopen(argv[1], "rb+");
@@ -41,7 +41,7 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp");
     F(f, 60, SEEK_SET) || !fread(b, 4, 1, f) || F(f, B, SEEK_SET) ||
     !fread(b, 4, 1, f) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR) ||
     !fread(b, 4, 1, f)) {
-    P("ERROR: Invalid Windows PE32(+) file");
+    fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
     return 1;
   }
