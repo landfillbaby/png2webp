@@ -1,6 +1,6 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.1.4"
+#define VERSION "v1.1.5"
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -15,7 +15,17 @@
 #if SIZE_MAX < 0xffffffff
 #error "size_t isn't at least 32-bit"
 #endif
-#if __STDC_VERSION__ < 201112L && !defined NOFOPENX
+#ifdef _WIN32
+#define _CRT_NONSTDC_NO_WARNINGS
+#include <fcntl.h>
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+#ifdef P2WCONF
+#include "p2wconf.h"
+#endif
+#if !defined NOFOPENX && __STDC_VERSION__ < 201112L
 #define NOFOPENX
 #endif
 #ifdef NOFOPENX
@@ -24,13 +34,6 @@
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
-#endif
-#ifdef _WIN32
-#define _CRT_NONSTDC_NO_WARNINGS
-#include <fcntl.h>
-#include <io.h>
-#else
-#include <unistd.h>
 #endif
 #include "png.h"
 #include "webp/decode.h"

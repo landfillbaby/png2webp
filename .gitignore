@@ -56,3 +56,5 @@ dkms.conf
 *.lnk
 /png2webp
 /exestamp
+/p2wconf.h
+/test/fopenx

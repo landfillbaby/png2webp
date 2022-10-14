@@ -1,5 +1,8 @@
 see also the TODO comments in the files themselves
 
+configure: LOSSYISERROR NOVLA DOFLUSH USEGETOPT
+maybe just use autoconf
+
 nmake? remake compile-msvc.bat ?
 try to figure out how to use clang-cl on windows instead of msys2
 it's in the native tools %path% now

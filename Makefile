@@ -1,3 +1,4 @@
+.PHONY: png2webp_timestamped install clean
 PREFIX ?= /usr/local
 INSTALL ?= install
 arch := $(shell uname -m)
@@ -6,23 +7,29 @@ CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=armv8-a+crc
 else
 define ccver :=
 printf '#ifdef __clang__\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
-'#if __clang_major__ > 11' '1' '#endif' '#elif defined __GNUC__' \
-'#if __GNUC__ > 10' '1' '#endif' '#endif' | $(CC) -E -P -x c -
+'#if __clang_major__ > 11' 'y' '#endif' '#elif defined __GNUC__' \
+'#if __GNUC__ > 10' 'y' '#endif' '#endif' | $(CC) -E -P -x c -
 endef
-ifeq ($(arch)_v$(shell $(ccver)),x86_64_v1)
+ifeq ($(arch)_$(shell $(ccver)),x86_64_y)
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=x86-64-v2
 else
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
 CPPFLAGS ?= -DNDEBUG
-CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src $(CPPFLAGS)
+CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
+	    -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
 ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
 endif
 LDLIBS ?= -lm
+thread :=
+threadchk := grep -Fxq '\#define NOTHREADS 1' p2wconf.h || echo y
+ifeq ($(shell $(threadchk)),y)
+thread := -lpthread #TODO: get from libwebp in case it's different
+endif
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
 	libpng/pngrtran.c libpng/pngrutil.c libpng/pngset.c libpng/pngtrans.c \
@@ -102,6 +109,7 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/quant_levels_utils.c \
 	libwebp/src/utils/random_utils.c libwebp/src/utils/rescaler_utils.c \
 	libwebp/src/utils/thread_utils.c libwebp/src/utils/utils.c
+	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) $(thread) -o $@
 exestamp: exestamp.c
 png2webp_timestamped: png2webp exestamp
 	./exestamp png2webp.exe $(shell git show -s --format=%ct)
@@ -109,3 +117,7 @@ install: png2webp
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
 clean:
 	$(RM) png2webp exestamp
+png2webp.c: p2wconf.h
+libpng/png.c: libpng/config.h
+libwebp/src/dsp/enc.c: libwebp/src/webp/config.h
+zlib/crc32.c: zlib/zconf.h
