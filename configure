@@ -69,7 +69,6 @@ fi
 if [ $fopenx -eq 2 ]; then
 	echo 'testing C11 fopen("wbx") support'
 	cd test
-	#TODO
 	if $CC $CFLAGS $CPPFLAGS $LDFLAGS fopenx.c $LDLIBS -o fopenx && ./fopenx
 	then
 		echo test succeeded
@@ -85,9 +84,14 @@ echo '// p2wconf.h; see README.md' > p2wconf.h
 if [ $nothreads -ge 1 ]; then
 	[ $nothreads -eq 1 ] && echo threading disabled by user
 	echo '#define NOTHREADS 1' >> p2wconf.h
+	echo 'PTHREAD_CC =' > pthreadvars.make
+	echo 'PTHREAD_CFLAGS =' >> pthreadvars.make
+	echo 'PTHREAD_LIBS =' >> pthreadvars.make
 else
 	echo threading enabled
 	echo '// #undef NOTHREADS' >> p2wconf.h
+	grep -E '^PTHREAD_(CC|CFLAGS|LIBS)[^[:alnum:]_]' \
+		libwebp/Makefile > pthreadvars.make
 fi
 if [ $fopenx -eq 1 ]; then
 	echo 'using C11 fopen("wbx")'

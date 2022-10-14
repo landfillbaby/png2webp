@@ -1,4 +1,10 @@
 .PHONY: png2webp_timestamped install clean
+include pthreadvars.make
+ifneq ($(PTHREAD_CC),)
+CC ?= $(PTHREAD_CC)
+endif
+LDLIBS ?= -lm
+LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 PREFIX ?= /usr/local
 INSTALL ?= install
 arch := $(shell uname -m)
@@ -16,6 +22,7 @@ else
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
+CFLAGS := $(PTHREAD_CFLAGS) $(CFLAGS)
 CPPFLAGS ?= -DNDEBUG
 CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	    -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
@@ -23,12 +30,6 @@ ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
-endif
-LDLIBS ?= -lm
-thread :=
-threadchk := grep -Fxq '\#define NOTHREADS 1' p2wconf.h || echo y
-ifeq ($(shell $(threadchk)),y)
-thread := -lpthread #TODO: get from libwebp in case it's different
 endif
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
@@ -109,7 +110,6 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/quant_levels_utils.c \
 	libwebp/src/utils/random_utils.c libwebp/src/utils/rescaler_utils.c \
 	libwebp/src/utils/thread_utils.c libwebp/src/utils/utils.c
-	$(LINK.c) $^ $(LOADLIBES) $(LDLIBS) $(thread) -o $@
 exestamp: exestamp.c
 png2webp_timestamped: png2webp exestamp
 	./exestamp png2webp.exe $(shell git show -s --format=%ct)
