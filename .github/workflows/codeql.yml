@@ -1,25 +1,21 @@
-name: "CodeQL (filtered)"
+name: CodeQL (filtered)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'cpp' ]
+        language: [ cpp ]
 
     steps:
     - name: Checkout repository
@@ -40,7 +36,7 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
-        upload: False
+        upload: false
         output: sarif-results
 
     - name: filter-sarif
@@ -58,7 +54,7 @@ jobs:
         sarif_file: sarif-results/cpp.sarif
 
     - name: Upload loc as a Build Artifact
-      uses: actions/upload-artifact@v2.2.0
+      uses: actions/upload-artifact@v3.1.0
       with:
         name: sarif-results
         path: sarif-results
