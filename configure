@@ -36,8 +36,9 @@ cd zlib
 echo configured zlib
 echo configuring libpng...
 cd ../libpng
-cp scripts/pnglibconf.h.prebuilt pnglibconf.h
+export DFA_XTRA=../pngusr.dfa
 ./configure --enable-hardware-optimizations ac_cv_lib_z_zlibVersion=yes "$@"
+make pnglibconf.h
 echo configured libpng
 echo configuring libwebp...
 cd ../libwebp

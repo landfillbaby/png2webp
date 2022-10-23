@@ -1,0 +1,5 @@
+everything = off
+option READ_tRNS on
+option READ_sRGB on
+option READ_gAMA on
+# TODO: turn needed stuff back on, see libpng/scripts/pnglibconf.dfa
