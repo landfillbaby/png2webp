@@ -16,7 +16,7 @@ while [ $# -gt 0 ]; do
 			echo
 			echo '--enable-fopen-x: force use of C11 fopen("wbx")'
 			echo '--disable-fopen-x: force use of POSIX fdopen()'
-			echo default is to compile and run test/fopenx.c
+			echo default is to compile and run conf/fopenx.c
 			exit 1;;
 		*) echo "unknown option '$1'"; exit 1;;
 	esac
@@ -68,8 +68,7 @@ then
 fi
 if [ $fopenx -eq 2 ]; then
 	echo 'testing C11 fopen("wbx") support'
-	cd test
-	#TODO
+	cd conf
 	if $CC $CFLAGS $CPPFLAGS $LDFLAGS fopenx.c $LDLIBS -o fopenx && ./fopenx
 	then
 		echo test succeeded
@@ -85,9 +84,14 @@ echo '// p2wconf.h; see README.md' > p2wconf.h
 if [ $nothreads -ge 1 ]; then
 	[ $nothreads -eq 1 ] && echo threading disabled by user
 	echo '#define NOTHREADS 1' >> p2wconf.h
+	echo 'PTHREAD_CC =' > conf/pthread.mk
+	echo 'PTHREAD_CFLAGS =' >> conf/pthread.mk
+	echo 'PTHREAD_LIBS =' >> conf/pthread.mk
 else
 	echo threading enabled
 	echo '// #undef NOTHREADS' >> p2wconf.h
+	grep -E '^PTHREAD_(CC|CFLAGS|LIBS)[^[:alnum:]_]' \
+		libwebp/Makefile > conf/pthread.mk
 fi
 if [ $fopenx -eq 1 ]; then
 	echo 'using C11 fopen("wbx")'
