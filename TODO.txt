@@ -7,9 +7,7 @@ nmake? remake compile-msvc.bat ?
 try to figure out how to use clang-cl on windows instead of msys2
 it's in the native tools %path% now
 make a separate build batch for it (or cmake?)
-use asm zlib and libpng code, or no? (make optional?)
-honestly just make a better build script!!!
-make sure to -DWEBP_USE_THREAD unless -DNOTHREADS is passed by the user
+make sure NOTHREADS is !WEBP_USE_THREAD
 
 add some flags to libpng configure. no phys and other useless stuff
 WEBP_REDUCE_SIZE ?
@@ -38,6 +36,7 @@ restrict const register static etc? or just rely on clang
 parallelize more, multiple conversions at once?
 needs no global pnglen, thread-safe strerror, total rewrite of terminal output
 maybe remove all global vars?
+clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 
 time_t stuff in exestamp.c?
 
@@ -45,7 +44,7 @@ sync old private dropbox version with git or delete it
 
 versions for newer lossless image formats
 jxl
-webp2 once it's released. see name collision comment
+webp2 once it's released. see rename comment
 
 maybe for comparison, jxl's predecessors:
 flif -> fuif -> jxl <- pik

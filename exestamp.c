@@ -37,10 +37,10 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
   }
   uint8_t b[4];
 #define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
-  if(!fread(b, 2, 1, f) || memcmp(b, (char[2]){"MZ"}, 2) ||
-    F(f, 60, SEEK_SET) || !fread(b, 4, 1, f) || F(f, B, SEEK_SET) ||
-    !fread(b, 4, 1, f) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR) ||
-    !fread(b, 4, 1, f)) {
+#define R(x) !fread(b, x, 1, f)
+  if(R(2) || memcmp(b, (char[2]){"MZ"}, 2) || F(f, 60, SEEK_SET) || R(4) ||
+    F(f, B, SEEK_SET) || R(4) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR) ||
+    R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
     return 1;
