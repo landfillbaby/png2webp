@@ -152,9 +152,9 @@ static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
 }
 static int progress(int percent, const WebPPicture *x) {
   (void)x;
-  fprintf(stderr, "\r[%-60.*s] %u%%", (unsigned)percent * 3 / 5,
-    (char[60]){"############################################################"},
-    percent);
+  char h[64];
+  memset(h, '#', 64);
+  fprintf(stderr, "\r[%-64.*s] %u%%", (unsigned)percent * 16 / 25, h, percent);
   return 1;
 }
 #define E(x, ...) \
@@ -277,7 +277,7 @@ static bool p2w(char *ip, char *op) {
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
     .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
     .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
-  // TODO? if(doprogress) fprintf(stderr, "[%-60.*s] %u%%", 0, "", 0);
+  if(doprogress) fprintf(stderr, "[%-64.*s] %u%%", 0, "", 0);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
     WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
