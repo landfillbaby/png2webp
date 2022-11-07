@@ -1,7 +1,7 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
 #define VERSION "v1.1.6"
-#include <errno.h>
+#define _FILE_OFFSET_BITS 64
 #include <inttypes.h>
 #include <limits.h>
 #include <setjmp.h>
@@ -64,8 +64,7 @@ png2webp -p[refv-] [INFILE [OUTFILE]]\n\
 }
 static bool exact, force, verbose, doprogress;
 #define P(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
-#define PV(...) \
-  if(verbose) P(__VA_ARGS__)
+#define PV(...) (verbose ? P(__VA_ARGS__) : 0)
 #define IP (ip ? ip : "<stdin>")
 #define OP (op ? op : "<stdout>")
 static FILE *openr(char *ip) {
@@ -94,11 +93,6 @@ static FILE *openw(char *op) {
   if(verbose) fputs("Encoding ...\n", stderr);
   if(!op) return stdout;
   FILE *fp;
-#define EO(x) \
-  if(!(x)) { \
-    perror("ERROR writing"); \
-    return 0; \
-  }
 #ifdef NOFOPENX
   int fd = open(op, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL) | O_BINARY,
 #ifdef _WIN32
@@ -107,7 +101,10 @@ static FILE *openw(char *op) {
     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
 #endif
   );
-  EO(fd != -1)
+  if(fd == -1) {
+    perror("ERROR writing");
+    return 0;
+  }
   if(!(fp = fdopen(fd, "wb"))) {
     perror("ERROR writing");
     close(fd);
@@ -115,7 +112,10 @@ static FILE *openw(char *op) {
     return 0;
   }
 #else
-  EO(fp = fopen(op, force ? "wb" : "wbx"))
+  if(!(fp = fopen(op, force ? "wb" : "wbx"))) {
+    perror("ERROR writing");
+    return 0;
+  }
 #endif
   return fp;
 }
@@ -157,11 +157,6 @@ static int progress(int percent, const WebPPicture *x) {
   fprintf(stderr, "\r[%-64.*s] %u%%", (unsigned)percent * 16 / 25, h, percent);
   return 1;
 }
-#define E(x, ...) \
-  if(!(x)) { \
-    P("ERROR " __VA_ARGS__); \
-    return 1; \
-  }
 static bool p2w(char *ip, char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
@@ -475,9 +470,10 @@ int main(int argc, char **argv) {
     memcpy(&endian, (char[4]){"\xAA\xBB\xCC\xDD"}, 4);
     if(endian == 0xAABBCCDD)
       P("Warning: %s", "Big-endian support is untested"); // TODO
-    else
-      E(endian == 0xDDCCBBAA, "32-bit mixed-endianness (%X) not supported",
-	endian)
+    else if(endian != 0xDDCCBBAA) {
+      P("ERROR: 32-bit mixed-endianness (%" PRIX32 ") not supported", endian);
+      return 1;
+    }
   }
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
@@ -540,7 +536,10 @@ endflagloop:
 #endif
 #ifdef NOVLA
 	char *op = malloc(len + 5);
-	E(op, "adding .%s extension to %s: Out of memory", "png", *argv)
+	if(!op) {
+	  P("ERROR adding .%s extension to %s: Out of memory", "png", *argv);
+	  return 1;
+	}
 #elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
@@ -571,7 +570,10 @@ endflagloop:
       {
 #ifdef NOVLA
 	char *op = malloc(len + 6);
-	E(op, "adding .%s extension to %s: Out of memory", "webp", *argv)
+	if(!op) {
+	  P("ERROR adding .%s extension to %s: Out of memory", "webp", *argv);
+	  return 1;
+	}
 #elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
