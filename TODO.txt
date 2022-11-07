@@ -19,6 +19,23 @@ try to minimize null frees without making a bigger exe
 maybe no gotos at all, in the same order, and let the compiler figure it out?
 same with p2w, just completely redo both
 
+parallelize more, multiple conversions at once?
+needs no global pnglen, total rewrite of terminal output
+maybe remove all global vars?
+clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
+no setjmp/longjmp ??
+use custom struct with png_create_(read|write)_struct and png_get_error_ptr
+
+try to make close+remove atomic, like a delete on close flag: FIO01-C
+windows: FILE_SHARE_DELETE, FILE_DISPOSITION_INFO
+freebsd: funlinkat
+other OSes: ???
+maybe instead make a temporary file and copy or rename it on success?
+postpones EEXIST until after encoding is done, as well as decoding as before
+linux 3.11+ (not android): O_TMPFILE, linkat. how to do -f?
+windows: FILE_SHARE_DELETE, FILE_RENAME_INFO
+other OSes: ???
+
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
 
@@ -32,11 +49,6 @@ just be a wrapper and nothing else
 restrict const register static etc? or just rely on clang
 
 -DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
-
-parallelize more, multiple conversions at once?
-needs no global pnglen, thread-safe strerror, total rewrite of terminal output
-maybe remove all global vars?
-clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 
 time_t stuff in exestamp.c?
 
