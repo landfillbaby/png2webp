@@ -1,60 +1,36 @@
 name: CodeQL (filtered)
-
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  push: {branches: ['**']}
+  pull_request: {branches: ['**']}
   workflow_dispatch:
-
 jobs:
   analyze:
-    name: Analyze
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ cpp ]
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-      with:
-        submodules: true
-
+      with: {submodules: true}
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-        queries: security-and-quality
-
+      with: {queries: security-and-quality}
     - run: ./configure
-
     - run: make exestamp png2webp
-
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
       with:
         upload: false
         output: sarif-results
-
     - name: filter-sarif
       uses: advanced-security/filter-sarif@main
       with:
-        patterns: |
-          -**
-          +*
+        patterns: -*lib*/**
         input: sarif-results/cpp.sarif
         output: sarif-results/cpp.sarif
-
     - name: Upload SARIF
       uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: sarif-results/cpp.sarif
-
+      with: {sarif_file: sarif-results/cpp.sarif}
     - name: Upload loc as a Build Artifact
-      uses: actions/upload-artifact@v3.1.1
+      uses: actions/upload-artifact@v3
       with:
         name: sarif-results
         path: sarif-results

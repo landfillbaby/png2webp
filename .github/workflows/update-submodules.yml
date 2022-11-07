@@ -1,41 +1,29 @@
 name: Update submodules
-
 on:
-  schedule:
-  - cron: '0 6 * * 0'
+  schedule: [cron: 0 6 * * 0]
   workflow_dispatch:
-
 jobs:
   update-submodules:
-    name: Update submodules
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
         submodules: true
-
+        fetch-depth: 0
     - name: Import GPG key
-      id: import-gpg
-      uses: crazy-max/ghaction-import-gpg@v5.2.0
+      uses: crazy-max/ghaction-import-gpg@v5
       with:
-        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-        passphrase: ${{ secrets.GPG_PASS }}
-        git_config_global: true
+        gpg_private_key: ${{secrets.GPG_PRIVATE_KEY}}
+        passphrase: ${{secrets.GPG_PASS}}
         git_user_signingkey: true
-        git_commit_gpgsign: true
-
     - name: Update submodules
       run: |
-        git submodule foreach 'git fetch -t --unshallow
-          git checkout "$(git describe --tags --abbrev=0 origin/HEAD)"'
+        git submodule foreach \
+          'git checkout "$(git describe --tags --abbrev=0 origin/HEAD)"'
+        if git commit -S -am"Update submodules (automated)
 
-    - name: Try to commit
-      run: |
-        if git commit -am"$(echo 'Update submodules (automated)'
-          echo
-          git submodule status | grep '^+' | cut '-d ' -f2-)"
+        $(git submodule status | grep '^+' | cut '-d ' -f2-)"
         then
           ./configure
           make
