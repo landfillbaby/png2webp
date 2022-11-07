@@ -1,6 +1,11 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
-#define VERSION "v1.1.6"
+#ifdef P2WCONF
+#include "p2wconf.h"
+#endif
+#ifndef VERSION
+#define VERSION "v1.1.7"
+#endif
 #define _FILE_OFFSET_BITS 64
 #include <inttypes.h>
 #include <limits.h>
@@ -21,9 +26,6 @@
 #include <io.h>
 #else
 #include <unistd.h>
-#endif
-#ifdef P2WCONF
-#include "p2wconf.h"
 #endif
 #if !defined NOFOPENX && __STDC_VERSION__ < 201112L
 #define NOFOPENX

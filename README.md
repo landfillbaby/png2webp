@@ -57,10 +57,10 @@ and place them in the supplied folders, or run
     git submodule update --init --depth 1
 
 Then run `./configure && make`.
+
 `./configure --help` to see some optional flags.
 
 ### For Windows
-Same as above, but ignore zlib's `./configure` failure.
 Optionally run `make png2webp_timestamped`
 to use the git commit timestamp instead of 1/1/1970.
 

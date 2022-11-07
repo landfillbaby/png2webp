@@ -4,7 +4,6 @@ ifneq ($(PTHREAD_CC),)
 CC ?= $(PTHREAD_CC)
 endif
 LDLIBS ?= -lm
-LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 PREFIX ?= /usr/local
 INSTALL ?= install
 arch := $(shell uname -m)
@@ -22,7 +21,6 @@ else
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
-CFLAGS := $(PTHREAD_CFLAGS) $(CFLAGS)
 CPPFLAGS ?= -DNDEBUG
 CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	    -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
@@ -31,6 +29,8 @@ LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
 else
 LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
 endif
+png2webp: CFLAGS += $(PTHREAD_CFLAGS)
+png2webp: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
 	libpng/pngrtran.c libpng/pngrutil.c libpng/pngset.c libpng/pngtrans.c \

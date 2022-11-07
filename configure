@@ -1,65 +1,70 @@
 #!/usr/bin/env sh
-webpflags=
+set -e
 nothreads=0
 fopenx=2
+gitdescribe=1
+version=
 [ -z "$CC" ] && CC=cc
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--disable-threading) nothreads=1;;
 		--enable-fopen-x) fopenx=1;;
 		--disable-fopen-x) fopenx=0;;
+		--no-git-describe) gitdescribe=0;;
 		--help)
 			echo 'usage: ./configure [flags]'
-			echo flags:
+			echo flags are passed to submodules\' configure scripts
+			echo
 			echo --disable-threading: force single-threaded build
 			echo default is to follow libwebp\'s threading test
 			echo
 			echo '--enable-fopen-x: force use of C11 fopen("wbx")'
 			echo '--disable-fopen-x: force use of POSIX fdopen()'
 			echo default is to compile and run conf/fopenx.c
+			echo
+			echo --no-git-describe: don\'t name non-release versions
 			exit 1;;
-		*) echo "unknown option '$1'"; exit 1;;
+		*) echo "warning: unknown configure option '$1'";;
 	esac
 	shift
 done
-if [ $nothreads -eq 1 ]; then
-	webpflags=--disable-threading
-fi
 origCPPFLAGS="$CPPFLAGS"
 CPPFLAGS="-I$PWD/zlib -I$PWD/libpng -I$PWD/libwebp -I$PWD/libwebp/src $CPPFLAGS"
-if [ -x zlib/configure ]; then
-	echo configuring zlib...
-	cd zlib
-	./configure
-	echo configured zlib
-	cd ..
-else
-	echo ERROR: can\'t exec zlib/configure
-	exit 1
-fi
-if [ -x libpng/configure ]; then
-	echo configuring libpng...
-	cd libpng
-	cp scripts/pnglibconf.h.prebuilt pnglibconf.h
-	./configure --enable-hardware-optimizations ac_cv_lib_z_zlibVersion=yes
-	echo configured libpng
-	cd ..
-else
-	echo ERROR: can\'t exec libpng/configure
-	exit 1
-fi
-if [ -x libwebp/autogen.sh ]; then
-	echo configuring libwebp...
-	cd libwebp
-	./autogen.sh
-	./configure --disable-near-lossless $webpflags
-	echo configured libwebp
-	cd ..
-else
-	echo ERROR: can\'t exec libwebp/autogen.sh
-	exit 1
-fi
+echo configuring zlib...
+cd zlib
+./configure "$@"
+echo configured zlib
+echo configuring libpng...
+cd ../libpng
+cp scripts/pnglibconf.h.prebuilt pnglibconf.h
+./configure --enable-hardware-optimizations ac_cv_lib_z_zlibVersion=yes "$@"
+echo configured libpng
+echo configuring libwebp...
+cd ../libwebp
+./autogen.sh
+./configure --disable-near-lossless "$@"
+echo configured libwebp
+cd ..
 CPPFLAGS="$origCPPFLAGS"
+if [ $gitdescribe -eq 1 ]; then
+	echo checking PNG2WebP version
+	if ! command -v git >/dev/null; then
+		echo git is not installed
+	elif ! git rev-parse >/dev/null; then
+		echo not a git repository
+	else
+		version="$(git describe --tags 2>/dev/null || true)"
+		[ -z "$version" ] && echo '`git describe --tags` failed'
+	fi
+else
+	echo version check disabled
+fi
+if [ -n "$version" ]; then
+	echo "PNG2WebP $version"
+else
+	echo using default version string
+	echo "PNG2WebP $(grep '^#define VERSION "' png2webp.c | cut '-d"' -f2)"
+fi
 if [ $nothreads -eq 0 ] &&
 	! grep -Fxq '#define WEBP_USE_THREAD 1' libwebp/src/webp/config.h
 then
@@ -80,23 +85,25 @@ if [ $fopenx -eq 2 ]; then
 	rm -f fopenx
 	cd ..
 fi
-echo '// p2wconf.h; see README.md' > p2wconf.h
+echo '// p2wconf.h; see README.md' >p2wconf.h
+[ -n "$version" ] && echo "#define VERSION \"$version\"" >>p2wconf.h
 if [ $nothreads -ge 1 ]; then
 	[ $nothreads -eq 1 ] && echo threading disabled by user
-	echo '#define NOTHREADS 1' >> p2wconf.h
-	echo 'PTHREAD_CC =' > conf/pthread.mk
-	echo 'PTHREAD_CFLAGS =' >> conf/pthread.mk
-	echo 'PTHREAD_LIBS =' >> conf/pthread.mk
+	echo '#define NOTHREADS 1' >>p2wconf.h
+	echo '# PTHREAD_CC =' >conf/pthread.mk
+	echo '# PTHREAD_CFLAGS =' >>conf/pthread.mk
+	echo '# PTHREAD_LIBS =' >>conf/pthread.mk
 else
 	echo threading enabled
-	echo '// #undef NOTHREADS' >> p2wconf.h
+	echo '// #undef NOTHREADS' >>p2wconf.h
 	grep -E '^PTHREAD_(CC|CFLAGS|LIBS)[^[:alnum:]_]' \
-		libwebp/Makefile > conf/pthread.mk
+		libwebp/Makefile >conf/pthread.mk
 fi
 if [ $fopenx -eq 1 ]; then
 	echo 'using C11 fopen("wbx")'
-	echo '// #undef NOFOPENX' >> p2wconf.h
+	echo '// #undef NOFOPENX' >>p2wconf.h
 else
 	echo 'using POSIX fdopen() instead of  C11 fopen("wbx")'
-	echo '#define NOFOPENX 1' >> p2wconf.h
+	echo '#define NOFOPENX 1' >>p2wconf.h
 fi
+echo PNG2WebP configure done
