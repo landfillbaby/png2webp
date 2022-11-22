@@ -11,6 +11,7 @@ jobs:
       with:
         submodules: true
         fetch-depth: 0
+        token: ${{secrets.PUSH_TOKEN}}
     - name: Import GPG key
       uses: crazy-max/ghaction-import-gpg@v5
       with:
@@ -19,13 +20,15 @@ jobs:
         git_user_signingkey: true
     - name: Update submodules
       run: |
-        git submodule foreach \
-          'git checkout "$(git describe --tags --abbrev=0 origin/HEAD)"'
         if git commit -S -am"Update submodules (automated)
 
-        $(git submodule status | grep '^+' | cut '-d ' -f2-)"
+        $(git submodule --quiet foreach \
+          'tag="$(git describe --tags --abbrev=0 origin/HEAD)"
+          if [ "$(git describe --tags HEAD)" != "$tag" ]; then
+            git checkout --quiet "$tag"
+            echo "$name" "$tag"
+          fi')"
         then
-          ./configure
-          make
+          git show --raw
           git push
         fi
