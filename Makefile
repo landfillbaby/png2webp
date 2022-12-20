@@ -6,7 +6,7 @@ endif
 LDLIBS ?= -lm
 PREFIX ?= /usr/local
 INSTALL ?= install
-arch := $(shell uname -m)
+arch := $(shell $(LINK.c) -dumpmachine | cut -d- -f1)
 ifeq ($(arch),aarch64)
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=armv8-a+crc
 else

@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 int main(void) {
 #if defined EEXIST && __STDC_VERSION__ >= 201112L
 	FILE *f = fopen("fopenx.txt", "wbx");
