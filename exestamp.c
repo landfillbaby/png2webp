@@ -1,9 +1,12 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
 #define _FILE_OFFSET_BITS 64
+#include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #if CHAR_BIT != 8
 #error "char isn't 8-bit"
@@ -19,9 +22,10 @@ struct c99_static_assert {
 #define F fseeko
 #endif
 int main(int argc, char **argv) {
-  uint64_t t;
-  uint8_t b[4];
-  if(argc != 3 || sscanf(argv[2], "%" SCNi64 "%c", &t, b) != 1) {
+  char *n;
+  uint32_t t;
+  if(argc != 3 || isspace(*argv[2]) ||
+    ((void)(t = (uint32_t)strtoll(argv[2], &n, 0)), *n) || errno) {
     fputs("Usage: exestamp EXE STAMP\nEXE: Windows PE32(+) file\nSTAMP: \
 Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
       stderr);
@@ -32,6 +36,7 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
     perror("ERROR opening file");
     return 1;
   }
+  uint8_t b[4];
 #define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
 #define R(x) !fread(b, x, 1, f)
   if(R(2) || memcmp(b, (char[2]){"MZ"}, 2) || F(f, 60, SEEK_SET) || R(4) ||
