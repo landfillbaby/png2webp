@@ -24,7 +24,7 @@ jobs:
 
         $(git submodule --quiet foreach \
           'tag="$(git describe --tags --abbrev=0 origin/HEAD)"
-          if [ "$(git describe --tags HEAD)" != "$tag" ]; then
+          if [ "$(git describe --tags)" != "$tag" ]; then
             git checkout --quiet "$tag"
             echo "$name" "$tag"
           fi')"
