@@ -5,8 +5,8 @@ fopenx=2
 gitdescribe=1
 version=
 [ -z "$CC" ] && CC=cc
-while [ $# -gt 0 ]; do
-	case "$1" in
+for arg in "$@"; do
+	case "$arg" in
 		--disable-threading) nothreads=1;;
 		--enable-fopen-x) fopenx=1;;
 		--disable-fopen-x) fopenx=0;;
@@ -24,9 +24,8 @@ while [ $# -gt 0 ]; do
 			echo
 			echo --no-git-describe: don\'t name non-release versions
 			exit 1;;
-		*) echo "warning: unknown configure option '$1'";;
+		*) echo "warning: unknown configure option '$arg'";;
 	esac
-	shift
 done
 origCPPFLAGS="$CPPFLAGS"
 CPPFLAGS="-I$PWD/zlib -I$PWD/libpng -I$PWD/libwebp -I$PWD/libwebp/src $CPPFLAGS"
