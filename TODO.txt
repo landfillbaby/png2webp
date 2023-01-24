@@ -1,5 +1,7 @@
 see also the TODO comments in the files themselves
 
+check WEBP_REDUCE_SIZE works with all #if in png2webp.c
+
 configure: LOSSYISERROR NOVLA DOFLUSH USEGETOPT
 maybe just use autoconf
 
@@ -10,7 +12,6 @@ make a separate build batch for it (or cmake?)
 make sure NOTHREADS is !WEBP_USE_THREAD
 
 add some flags to libpng configure. no phys and other useless stuff
-WEBP_REDUCE_SIZE ?
 
 minimize static build by making strings match some library one where possible
 

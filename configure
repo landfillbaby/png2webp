@@ -26,7 +26,8 @@ for arg; do case "$arg" in
 	*) echo "warning: unknown configure option '$arg'";;
 esac; done
 origCPPFLAGS="$CPPFLAGS"
-CPPFLAGS="-I$PWD/zlib -I$PWD/libpng -I$PWD/libwebp -I$PWD/libwebp/src $CPPFLAGS"
+CPPFLAGS="-I$PWD/zlib -I$PWD/libpng -I$PWD/libwebp -I$PWD/libwebp/src"
+CPPFLAGS="$CPPFLAGS -DWEBP_REDUCE_SIZE $origCPPFLAGS"
 echo configuring zlib...
 cd zlib
 ./configure

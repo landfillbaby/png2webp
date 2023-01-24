@@ -29,7 +29,7 @@ LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
 endif
 png2webp: CFLAGS += $(PTHREAD_CFLAGS)
 png2webp: CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
-	-DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
+	-DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
 png2webp: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
