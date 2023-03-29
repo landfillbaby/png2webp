@@ -9,7 +9,7 @@ for arg; do case "$arg" in
 	--disable-threading) nothreads=1;;
 	--enable-fopen-x) fopenx=1;;
 	--disable-fopen-x) fopenx=0;;
-	--no-git-describe) gitdescribe=0;;
+	--disable-git-describe) gitdescribe=0;;
 	--help)
 		echo 'usage: ./configure [flags]'
 		echo flags are passed to libpng and libwebp\'s configures
@@ -21,7 +21,7 @@ for arg; do case "$arg" in
 		echo '--disable-fopen-x: force use of POSIX fdopen()'
 		echo default is to compile and run conf/fopenx.c
 		echo
-		echo --no-git-describe: don\'t name non-release versions
+		echo --disable-git-describe: don\'t name non-release versions
 		exit 1;;
 	*) echo "warning: unknown configure option '$arg'";;
 esac; done
