@@ -101,7 +101,7 @@ static FILE *openw(char *op) {
   if(!op) return stdout;
   FILE *fp;
 #ifdef NOFOPENX
-  int fd = open(op, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL) | O_BINARY,
+  int fd = open(op, O_WRONLY | O_BINARY | O_CREAT | (force ? O_TRUNC : O_EXCL),
 #ifdef _WIN32
       S_IREAD | S_IWRITE
 #else
@@ -228,7 +228,7 @@ static bool p2w(char *ip, char *op) {
     S(swap_alpha);
     png_set_add_alpha(p, 255, PNG_FILLER_BEFORE);
   }
-  int passes = S(interlace_handling);
+  unsigned passes = (unsigned)S(interlace_handling);
   png_read_update_info(p, n);
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
@@ -243,7 +243,7 @@ static bool p2w(char *ip, char *op) {
     P("ERROR reading: %s", *k);
     goto p2w_close;
   }
-  for(unsigned x = (unsigned)passes; x; x--) {
+  for(unsigned x = passes; x; x--) {
     uint8_t *w = (uint8_t *)b;
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
@@ -259,7 +259,7 @@ static bool p2w(char *ip, char *op) {
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s",
       width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
       f[(unsigned)colortype], trns ? ", with transparency" : "",
-      (unsigned)passes > 1 ? ", interlaced" : "");
+      passes > 1 ? ", interlaced" : "");
   WebPConfig c;
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100)) {
     P("ERROR writing: %s", k[3]);
@@ -329,7 +329,7 @@ static bool w2p(char *ip, char *op) {
     goto w2p_close;
   }
   uint32_t l = // RIFF header size
-      ((uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24))) + 8;
+      (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
   if(l < 28 || l > 0xfffffffe) {
     P("ERROR reading: %s", k[2]);
     goto w2p_close;
@@ -382,7 +382,7 @@ static bool w2p(char *ip, char *op) {
 #endif
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
      " bytes (%.15g bpp)\nUses alpha: %s" FMTSTR,
-      W, H, l, (double)l * 8 / (W * H), A ? "yes" : "no" FMTARG);
+      W, H, l, l * 8. / (W * H), A ? "yes" : "no" FMTARG);
   if(I.has_animation) {
     P("ERROR reading: %s", "Unsupported feature: animation");
     goto w2p_free;
@@ -538,7 +538,7 @@ endflagloop:
 #ifdef NOVLA
       char *op = malloc(len + 5);
       if(!op) {
-	P("ERROR adding .%s extension to %s: Out of memory", "png", *argv);
+	P("ERROR adding %s extension to %s: Out of memory", ".png", *argv);
 	return 1;
       }
 #elif defined __GNUC__
@@ -568,7 +568,7 @@ endflagloop:
 #ifdef NOVLA
       char *op = malloc(len + 6);
       if(!op) {
-	P("ERROR adding .%s extension to %s: Out of memory", "webp", *argv);
+	P("ERROR adding %s extension to %s: Out of memory", ".webp", *argv);
 	return 1;
       }
 #elif defined __GNUC__
