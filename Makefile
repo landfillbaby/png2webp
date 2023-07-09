@@ -1,4 +1,5 @@
-.PHONY: png2webp_timestamped install clean
+.PHONY: png2webp_timestamped install clean \
+	submodules_dynamic install_submodules_dynamic
 include conf/pthread.mk
 ifneq ($(PTHREAD_CC),)
 CC ?= $(PTHREAD_CC)
@@ -8,6 +9,7 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 arch := $(shell $(LINK.c) -dumpmachine | cut -d- -f1)
 ifeq ($(arch),aarch64)
+png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=armv8-a+crc
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=armv8-a+crc
 else
 define ccver :=
@@ -16,21 +18,29 @@ printf '#ifdef __clang__\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
 '#if __GNUC__ > 10' 'y' '#endif' '#endif' | $(CC) -E -P -x c -
 endef
 ifeq ($(arch)_$(shell $(ccver)),x86_64_y)
+png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=x86-64-v2
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=x86-64-v2
 else
+png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
 CPPFLAGS ?= -DNDEBUG
-ifeq ($(OS),Windows_NT)
-LDFLAGS ?= -s -Wl,--as-needed,--gc-sections,--no-insert-timestamp
+ifeq ($(strip $(shell printf '#ifdef __clang__\ny\n#endif\n' | $(CC) -E -P -x c -)),y)
+useld := --ld-path="$(shell command -v $(LD))"
 else
-LDFLAGS ?= -s -Wl,--as-needed,--gc-sections
+useld :=
+endif
+ifeq ($(OS),Windows_NT)
+LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections,--no-insert-timestamp
+else
+LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections
 endif
 png2webp: CFLAGS += $(PTHREAD_CFLAGS)
-png2webp: CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
+png2webp png2webp_dynamic: \
+	CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	-DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
-png2webp: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
+png2webp png2webp_dynamic: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
 	libpng/pngrtran.c libpng/pngrutil.c libpng/pngset.c libpng/pngtrans.c \
@@ -55,22 +65,21 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/dsp/alpha_processing_mips_dsp_r2.c \
 	libwebp/src/dsp/alpha_processing_neon.c \
 	libwebp/src/dsp/alpha_processing_sse2.c \
-	libwebp/src/dsp/alpha_processing_sse41.c \
-	libwebp/src/dsp/cost.c libwebp/src/dsp/cost_mips32.c \
-	libwebp/src/dsp/cost_mips_dsp_r2.c libwebp/src/dsp/cost_neon.c \
-	libwebp/src/dsp/cost_sse2.c libwebp/src/dsp/cpu.c \
-	libwebp/src/dsp/dec.c libwebp/src/dsp/dec_clip_tables.c \
-	libwebp/src/dsp/dec_mips32.c libwebp/src/dsp/dec_mips_dsp_r2.c \
-	libwebp/src/dsp/dec_msa.c libwebp/src/dsp/dec_neon.c \
-	libwebp/src/dsp/dec_sse2.c libwebp/src/dsp/dec_sse41.c \
-	libwebp/src/dsp/enc.c libwebp/src/dsp/enc_mips32.c \
-	libwebp/src/dsp/enc_mips_dsp_r2.c libwebp/src/dsp/enc_msa.c \
-	libwebp/src/dsp/enc_neon.c libwebp/src/dsp/enc_sse2.c \
-	libwebp/src/dsp/enc_sse41.c libwebp/src/dsp/filters.c \
-	libwebp/src/dsp/filters_mips_dsp_r2.c libwebp/src/dsp/filters_msa.c \
-	libwebp/src/dsp/filters_neon.c libwebp/src/dsp/filters_sse2.c \
-	libwebp/src/dsp/lossless.c libwebp/src/dsp/lossless_enc.c \
-	libwebp/src/dsp/lossless_enc_mips32.c \
+	libwebp/src/dsp/alpha_processing_sse41.c libwebp/src/dsp/cost.c \
+	libwebp/src/dsp/cost_mips32.c libwebp/src/dsp/cost_mips_dsp_r2.c \
+	libwebp/src/dsp/cost_neon.c libwebp/src/dsp/cost_sse2.c \
+	libwebp/src/dsp/cpu.c libwebp/src/dsp/dec.c \
+	libwebp/src/dsp/dec_clip_tables.c libwebp/src/dsp/dec_mips32.c \
+	libwebp/src/dsp/dec_mips_dsp_r2.c libwebp/src/dsp/dec_msa.c \
+	libwebp/src/dsp/dec_neon.c libwebp/src/dsp/dec_sse2.c \
+	libwebp/src/dsp/dec_sse41.c libwebp/src/dsp/enc.c \
+	libwebp/src/dsp/enc_mips32.c libwebp/src/dsp/enc_mips_dsp_r2.c \
+	libwebp/src/dsp/enc_msa.c libwebp/src/dsp/enc_neon.c \
+	libwebp/src/dsp/enc_sse2.c libwebp/src/dsp/enc_sse41.c \
+	libwebp/src/dsp/filters.c libwebp/src/dsp/filters_mips_dsp_r2.c \
+	libwebp/src/dsp/filters_msa.c libwebp/src/dsp/filters_neon.c \
+	libwebp/src/dsp/filters_sse2.c libwebp/src/dsp/lossless.c \
+	libwebp/src/dsp/lossless_enc.c libwebp/src/dsp/lossless_enc_mips32.c \
 	libwebp/src/dsp/lossless_enc_mips_dsp_r2.c \
 	libwebp/src/dsp/lossless_enc_msa.c libwebp/src/dsp/lossless_enc_neon.c \
 	libwebp/src/dsp/lossless_enc_sse2.c \
@@ -111,13 +120,61 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/quant_levels_utils.c \
 	libwebp/src/utils/random_utils.c libwebp/src/utils/rescaler_utils.c \
 	libwebp/src/utils/thread_utils.c libwebp/src/utils/utils.c
+
+submodules_dynamic: zlib_dynamic libpng_dynamic libwebp_dynamic
+	;
+install_submodules_dynamic: install_zlib_dynamic install_libpng_dynamic \
+	install_libwebp_dynamic
+	;
+
+zlib_dynamic:
+	cd zlib && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)"
+install_zlib_dynamic:
+	cd zlib && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)" \
+	PREFIX="$(PREFIX)" INSTALL="$(INSTALL)" install
+
+libpng_dynamic install_libpng_dynamic: LDFLAGS := -L../zlib $(LDFLAGS)
+libpng_dynamic install_libpng_dynamic: CPPFLAGS := -I../zlib $(CPPFLAGS)
+libpng_dynamic:
+	cd libpng && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)" \
+	&& ln -sf libpng16.so .libs/libpng.so
+install_libpng_dynamic:
+	cd libpng && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)" \
+	PREFIX="$(PREFIX)" INSTALL="$(INSTALL)" install
+
+libwebp_dynamic:
+	cd libwebp && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)"
+install_libwebp_dynamic:
+	cd libwebp && $(MAKE) $(AM_MAKEFLAGS) CC="$(CC)" CFLAGS="$(CFLAGS)" \
+	CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" LDLIBS="$(LDLIBS)" \
+	PREFIX="$(PREFIX)" INSTALL="$(INSTALL)" install
+
+png2webp_dynamic: png2webp.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Lzlib -Llibpng/.libs -Llibwebp/src/.libs \
+	$(LDFLAGS) $(TARGET_ARCH) $< $(LOADLIBES) $(LDLIBS) -lpng -lwebp -o $@
+
 exestamp: exestamp.c
 png2webp_timestamped: png2webp exestamp
 	./exestamp png2webp.exe $(shell git show -s --format=%ct)
+png2webp_dynamic_timestamped: png2webp exestamp
+	./exestamp png2webp_dynamic.exe $(shell git show -s --format=%ct)
+
 install: png2webp
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
+install_dynamic: png2webp_dynamic
+	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/
+
 clean:
-	$(RM) png2webp exestamp
+	$(RM) png2webp png2webp_dynamic exestamp libpng/.libs/libpng.so
+	cd zlib && $(MAKE) $(AM_MAKEFLAGS) clean
+	cd libpng && $(MAKE) $(AM_MAKEFLAGS) clean
+	cd libwebp && $(MAKE) $(AM_MAKEFLAGS) clean
+
 png2webp.c: p2wconf.h
 libpng/png.c: libpng/config.h
 libwebp/src/dsp/enc.c: libwebp/src/webp/config.h

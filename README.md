@@ -41,28 +41,32 @@ and drag the image files onto the corresponding batch file.
 Rename the wrappers if you want, but don't rename the program.
 
 # Compiling
-## Prebuilt libpng and libwebp
-Install `libpng` and `libwebp`, then just run:
-
-    cc -O3 -DNDEBUG -s -o png2webp png2webp.c -lpng -lwebp
-
-Or on Windows MSVC:
-
-    cl.exe /nologo /std:c11 /O2 /Ob3 /DNDEBUG /I libpng /I libwebp/src png2webp.c libpng16.lib zlib.lib libwebp.lib
-
-## Static build
 Download the sources for libpng, zlib, and libwebp,
 and place them in the supplied folders, or run
 
     git submodule update --init --depth 1
 
-Then run `./configure && make`.
+Then run `./configure`. (Try `./configure --help` to see some optional flags.)
 
-`./configure --help` to see some optional flags.
+## Static
+Simply run `make` or `make png2webp`.
 
-### For Windows
+## Dynamic
+To dynamically link against `libpng` and `libwebp`, either
+install them through your package manager, or run `make submodules_dynamic`.
+
+Then run `make png2webp_dynamic`.
+
+## For Windows
 Optionally run `make png2webp_timestamped`
-to use the git commit timestamp instead of 1/1/1970.
+(or `make png2webp_dynamic_timestamped`), to use the git commit timestamp
+instead of 1/1/1970 in the `.exe`'s PE32+ header.
+
+# Installing
+- `make install` to install the static build.
+- `make install_dynamic`
+to install the dynamic build as `png2webp_dynamic` (rename it if you want).
+- `make install_submodules_dynamic` to install `zlib`, `libpng`, and `libwebp`.
 
 ## Problems?
 In either case, if you get any warnings or errors, just
