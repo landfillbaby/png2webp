@@ -20,15 +20,21 @@ jobs:
       with:
         upload: false
         output: sarif-results
-    - name: filter-sarif
+    - name: filter-sarif cpp
       uses: advanced-security/filter-sarif@main
       with:
         patterns: -*lib*/**
         input: sarif-results/cpp.sarif
         output: sarif-results/cpp.sarif
+    - name: filter-sarif python
+      uses: advanced-security/filter-sarif@main
+      with:
+        patterns: -*lib*/**
+        input: sarif-results/python.sarif
+        output: sarif-results/python.sarif
     - name: Upload SARIF
       uses: github/codeql-action/upload-sarif@v2
-      with: {sarif_file: sarif-results/cpp.sarif}
+      with: {sarif_file: sarif-results}
     - name: Upload loc as a Build Artifact
       uses: actions/upload-artifact@v3
       with:
