@@ -177,8 +177,8 @@ static bool p2w(char *ip, char *op) {
       "???", // image too big (checked on PNG input)
       "???", "???", "I/O error", "???", // lossy stuff
       "???"}; // canceled
-  png_struct *p =
-      png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
+  png_struct *p
+      = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
   if(!p) {
     P("ERROR reading: %s", *k);
     goto p2w_close;
@@ -277,8 +277,8 @@ static bool p2w(char *ip, char *op) {
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
       .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
   if(doprogress) fprintf(stderr, "[%-64.*s] %u%%", 0, "", 0);
-  trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA)) &&
-      WebPPictureHasTransparency(&o);
+  trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
+      && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
   if(doprogress) fputc('\n', stderr);
   if(!r) {
@@ -328,8 +328,8 @@ static bool w2p(char *ip, char *op) {
     P("ERROR reading: %s", k[2]);
     goto w2p_close;
   }
-  uint32_t l = // RIFF header size
-      (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
+  // RIFF header size
+  uint32_t l = (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
   if(l < 28 || l > 0xfffffffe) {
     P("ERROR reading: %s", k[2]);
     goto w2p_close;
@@ -512,8 +512,8 @@ endflagloop:
 #define URGC (unsigned)argc
 #define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
   if(pipe) {
-    if(URGC > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0)) ||
-	((usestdout = (URGC < 2 || PIPEARG(1))) && isatty(1)))
+    if(URGC > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0))
+	|| ((usestdout = (URGC < 2 || PIPEARG(1))) && isatty(1)))
       return help();
 #ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
