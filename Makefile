@@ -1,5 +1,7 @@
-.PHONY: png2webp_timestamped install clean \
-	submodules_dynamic install_submodules_dynamic
+.PHONY: clean png2webp_timestamped png2webp_dynamic_timestamped install \
+	install_dynamic submodules_dynamic install_submodules_dynamic \
+	zlib_dynamic install_zlib_dynamic libpng_dynamic \
+	install_libpng_dynamic libwebp_dynamic install_libwebp_dynamic
 include conf/pthread.mk
 ifneq ($(PTHREAD_CC),)
 CC ?= $(PTHREAD_CC)
@@ -26,7 +28,8 @@ CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
 CPPFLAGS ?= -DNDEBUG
-ifeq ($(strip $(shell printf '#ifdef __clang__\ny\n#endif\n' | $(CC) -E -P -x c -)),y)
+ifeq ($(strip $(shell printf '#ifdef __clang__\ny\n#endif\n' \
+	| $(CC) -E -P -x c -)),y)
 useld := --ld-path="$(shell command -v $(LD))"
 else
 useld :=
