@@ -115,7 +115,7 @@ static FILE *openw(char *op) {
   if(!(fp = fdopen(fd, "wb"))) {
     perror("ERROR writing");
     close(fd);
-    remove(op);
+    unlink(op);
     return 0;
   }
 #else
@@ -285,7 +285,7 @@ static bool p2w(char *ip, char *op) {
     P("ERROR writing: %s", k[o.error_code - 1]);
     fclose(fp);
   p2w_rm:
-    if(op) remove(op);
+    if(op) unlink(op);
     goto p2w_free;
   }
   if(fclose(fp)) {
@@ -436,7 +436,7 @@ static bool w2p(char *ip, char *op) {
   w2p_close:
     fclose(fp);
   w2p_free:
-    if(openwdone) remove(op);
+    if(openwdone) unlink(op);
     free(x);
     if(b) free(b);
     png_destroy_write_struct(&p, &n);

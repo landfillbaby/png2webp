@@ -27,7 +27,7 @@ clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 no setjmp/longjmp ??
 use custom struct with png_create_(read|write)_struct and png_get_error_ptr
 
-try to make close+remove atomic, like a delete on close flag: FIO01-C
+try to make close+unlink atomic, like a delete on close flag: FIO01-C
 windows: FILE_SHARE_DELETE, FILE_DISPOSITION_INFO
 freebsd: funlinkat
 other OSes: ???
