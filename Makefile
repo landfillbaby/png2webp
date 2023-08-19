@@ -36,8 +36,17 @@ useld :=
 endif
 ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections,--no-insert-timestamp
+exestamp: exestamp.c
+png2webp_timestamped: png2webp exestamp
+	./exestamp png2webp.exe $(shell git show -s --format=%ct)
+png2webp_dynamic_timestamped: png2webp exestamp
+	./exestamp png2webp_dynamic.exe $(shell git show -s --format=%ct)
 else
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections
+png2webp_timestamped: png2webp
+	./exestamp.py png2webp.exe $(shell git show -s --format=%ct)
+png2webp_dynamic_timestamped: png2webp
+	./exestamp.py png2webp_dynamic.exe $(shell git show -s --format=%ct)
 endif
 png2webp: CFLAGS += $(PTHREAD_CFLAGS)
 png2webp png2webp_dynamic: \
@@ -160,12 +169,6 @@ install_libwebp_dynamic:
 png2webp_dynamic: png2webp.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Lzlib -Llibpng/.libs -Llibwebp/src/.libs \
 	$(LDFLAGS) $(TARGET_ARCH) $< $(LOADLIBES) $(LDLIBS) -lpng -lwebp -o $@
-
-exestamp: exestamp.c
-png2webp_timestamped: png2webp exestamp
-	./exestamp png2webp.exe $(shell git show -s --format=%ct)
-png2webp_dynamic_timestamped: png2webp exestamp
-	./exestamp png2webp_dynamic.exe $(shell git show -s --format=%ct)
 
 install: png2webp
 	$(INSTALL) $^ $(DESTDIR)$(PREFIX)/bin/

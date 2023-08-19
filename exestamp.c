@@ -16,22 +16,24 @@
 #elif LONG_MAX > 0xfffffffe
 #define F fseek
 #else
-struct c99_static_assert {
-  int off_t_must_be_64bit: sizeof(off_t) > 4;
+struct static_assert_old {
+  int off_t_too_small: (off_t)0xffffffff < 0xffffffffll ? -1 : 1;
 };
 #define F fseeko
 #endif
 int main(int argc, char **argv) {
   char *n;
   uint32_t t;
-  if(argc != 3 || isspace(*argv[2])
+  if(argc < 2 || argc > 3 || isspace(*argv[2])
       || ((void)(t = (uint32_t)strtoll(argv[2], &n, 0)), *n) || errno) {
-    fputs("Usage: exestamp EXE STAMP\nEXE: Windows PE32(+) file\nSTAMP: \
-Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
+    fputs("Usage: exestamp EXE [STAMP]\n\
+EXE:   Windows PE32(+) file\n\
+STAMP: new Unix timestamp,\n\
+       decimal, octal (leading 0), or hexadecimal (leading 0x)\n",
 	stderr);
     return -1;
   }
-  FILE *f = fopen(argv[1], "rb+");
+  FILE *f = fopen(argv[1], argc < 3 ? "rb" : "rb+");
   if(!f) {
     perror("ERROR opening file");
     return 1;
@@ -46,13 +48,16 @@ Decimal, octal (leading 0), or hexadecimal (leading 0x) Unix timestamp\n",
     fclose(f);
     return 1;
   }
-  printf("Original timestamp: %" PRIu32 "\n", B);
+  if(argc < 3) printf("%" PRIu32 "\n", B);
+  else {
+    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
 #define T(x) ((t >> x) & 255)
-  if(F(f, -4, SEEK_CUR)
-      || !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
-    perror("ERROR writing new timestamp");
-    fclose(f);
-    return 1;
+    if(F(f, -4, SEEK_CUR)
+	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
+      perror("ERROR writing new timestamp");
+      fclose(f);
+      return 1;
+    }
   }
   if(fclose(f)) {
     perror("ERROR closing file");
