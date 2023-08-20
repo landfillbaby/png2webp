@@ -7,16 +7,13 @@
 #define VERSION "v1.1.10"
 #endif
 #define _FILE_OFFSET_BITS 64
+#include "pun.h"
 #include <inttypes.h>
-#include <limits.h>
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if CHAR_BIT != 8
-#error "char isn't 8-bit"
-#endif
 #if SIZE_MAX < 0xffffffff
 #error "size_t isn't at least 32-bit"
 #endif
@@ -43,11 +40,6 @@
 #if defined __GNUC__ && !defined __clang__
 #pragma GCC diagnostic ignored "-Wclobbered"
 #endif
-union u {
-  char x[4];
-  uint32_t y;
-};
-#define U(x) (union u){x}.y
 static int help(void) {
   fputs("PNG2WebP " VERSION "\n\
 \n\
@@ -313,10 +305,9 @@ static bool w2p(char *ip, char *op) {
   FILE *fp = openr(ip);
   if(!fp) return 1;
   bool openwdone = 0;
-  uint8_t *x = 0, *b = 0;
+  uint8_t *x = 0, *b = 0, i[12];
   png_struct *p = 0;
   png_info *n = 0;
-  uint8_t i[12];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
@@ -324,7 +315,7 @@ static bool w2p(char *ip, char *op) {
     P("ERROR reading: %s", k[6]);
     goto w2p_close;
   }
-  if(memcmp(i, &U("RIFF"), 4) || memcmp(i + 8, &U("WEBP"), 4)) {
+  if(u4(i) != u4("RIFF") || u4(i + 8) != u4("WEBP")) {
     P("ERROR reading: %s", k[2]);
     goto w2p_close;
   }
@@ -470,7 +461,7 @@ static bool w2p(char *ip, char *op) {
 }
 int main(int argc, char **argv) {
   { // should optimize out
-    uint32_t endian = U("\xAA\xBB\xCC\xDD");
+    uint32_t endian = u4("\xAA\xBB\xCC\xDD");
     if(endian == 0xAABBCCDD)
       P("Warning: %s", "Big-endian support is untested"); // TODO
     else if(endian != 0xDDCCBBAA) {
@@ -527,11 +518,9 @@ endflagloop:
   if(reverse)
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 4) {
-	uint32_t ext;
-	memcpy(&ext, *argv + len - 4, 4);
-	if(argv[0][len - 5] == '.' && (ext | U("    ")) == U("webp")) len -= 5;
-      }
+      if(len > 4 && argv[0][len - 5] == '.'
+	  && (u4(*argv + len - 4) | u4("    ")) == u4("webp"))
+	len -= 5;
 #if defined __STDC_NO_VLA__ && !defined NOVLA
 #define NOVLA
 #endif
@@ -560,11 +549,7 @@ endflagloop:
     if(!doprogress) doprogress = isatty(2);
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 3) {
-	uint32_t ext;
-	memcpy(&ext, *argv + len - 4, 4);
-	if((ext | U("\0   ")) == U(".png")) len -= 4;
-      }
+      if(len > 3 && (u4(*argv + len - 4) | u4("\0   ")) == u4(".png")) len -= 4;
 #ifdef NOVLA
       char *op = malloc(len + 6);
       if(!op) {

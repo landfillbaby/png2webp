@@ -36,6 +36,7 @@ useld :=
 endif
 ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections,--no-insert-timestamp
+exestamp.c: pun.h
 exestamp: exestamp.c
 png2webp_timestamped: png2webp exestamp
 	./exestamp png2webp.exe $(shell git show -s --format=%ct)
@@ -181,7 +182,7 @@ clean:
 	cd libpng && $(MAKE) $(AM_MAKEFLAGS) clean
 	cd libwebp && $(MAKE) $(AM_MAKEFLAGS) clean
 
-png2webp.c: p2wconf.h
+png2webp.c: p2wconf.h pun.h
 libpng/png.c: libpng/config.h
 libwebp/src/dsp/enc.c: libwebp/src/webp/config.h
 zlib/crc32.c: zlib/zconf.h

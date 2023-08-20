@@ -1,16 +1,13 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
 #define _FILE_OFFSET_BITS 64
+#include "pun.h"
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#if CHAR_BIT != 8
-#error "char isn't 8-bit"
-#endif
 #ifdef _WIN32
 #define F _fseeki64
 #elif LONG_MAX > 0xfffffffe
@@ -41,8 +38,8 @@ STAMP: new Unix timestamp,\n\
   uint8_t b[4];
 #define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
 #define R(x) !fread(b, x, 1, f)
-  if(R(2) || memcmp(b, (char[2]){"MZ"}, 2) || F(f, 60, SEEK_SET) || R(4)
-      || F(f, B, SEEK_SET) || R(4) || memcmp(b, "PE\0", 4) || F(f, 4, SEEK_CUR)
+  if(R(2) || u2(b) != u2("MZ") || F(f, 60, SEEK_SET) || R(4)
+      || F(f, B, SEEK_SET) || R(4) || u4(b) != u4("PE\0") || F(f, 4, SEEK_CUR)
       || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
