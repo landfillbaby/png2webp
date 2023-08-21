@@ -2,8 +2,8 @@
 // vi: sw=2 tw=80
 #ifndef PUN_H
 #define PUN_H
-#include <inttypes.h>
 #include <limits.h>
+#include <stdint.h>
 #include <string.h>
 #if CHAR_BIT != 8
 #error "char isn't 8-bit"
