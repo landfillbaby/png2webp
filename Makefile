@@ -11,7 +11,7 @@ PREFIX ?= /usr/local
 INSTALL ?= install
 arch := $(shell $(LINK.c) -dumpmachine | cut -d- -f1)
 ifeq ($(arch),aarch64)
-png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=armv8-a+crc
+png2webp_dynamic exestamp: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=armv8-a+crc
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=armv8-a+crc
 else
 define ccver :=
@@ -36,14 +36,14 @@ useld :=
 endif
 ifeq ($(OS),Windows_NT)
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections,--no-insert-timestamp
-exestampexec = ./exestamp.exe
+exestampexec := ./exestamp.exe
 png2webp_timestamped: exestamp
 png2webp_dynamic_timestamped: exestamp
 else
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections
-exestampexec = ./exestamp.py
+exestampexec := ./exestamp.py
 endif
-png2webp: CFLAGS += $(PTHREAD_CFLAGS)
+png2webp png2webp_dynamic: CFLAGS += $(PTHREAD_CFLAGS)
 png2webp png2webp_dynamic: \
 	CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	-DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
