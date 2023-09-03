@@ -60,7 +60,7 @@ Then run `make png2webp_dynamic`.
 ## For Windows
 Optionally run `make png2webp_timestamped`
 (or `make png2webp_dynamic_timestamped`), to use the git commit timestamp
-instead of 1/1/1970 in the `.exe`'s PE32+ header.
+instead of 1/1/1970 in the `.exe`'s PE32(+) header.
 
 # Installing
 - `make install` to install the static build.
