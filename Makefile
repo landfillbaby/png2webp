@@ -4,7 +4,7 @@
 	install_libpng_dynamic libwebp_dynamic install_libwebp_dynamic
 include conf/pthread.mk
 ifneq ($(PTHREAD_CC),)
-CC ?= $(PTHREAD_CC)
+png2webp: CC ?= $(PTHREAD_CC)
 endif
 LDLIBS ?= -lm
 PREFIX ?= /usr/local
@@ -43,11 +43,11 @@ else
 LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections
 exestampexec := ./exestamp.py
 endif
-png2webp png2webp_dynamic: CFLAGS += $(PTHREAD_CFLAGS)
+png2webp: CFLAGS += $(PTHREAD_CFLAGS)
 png2webp png2webp_dynamic: \
 	CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	-DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
-png2webp png2webp_dynamic: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
+png2webp: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
 	libpng/pngrtran.c libpng/pngrutil.c libpng/pngset.c libpng/pngtrans.c \
