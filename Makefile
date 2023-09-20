@@ -20,10 +20,10 @@ printf '#ifdef __clang__\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
 '#if __GNUC__ > 10' 'y' '#endif' '#endif' | $(CC) -E -P -x c -
 endef
 ifeq ($(arch)_$(shell $(ccver)),x86_64_y)
-png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=x86-64-v2
+png2webp_dynamic exestamp: CFLAGS ?= -O3 -Wall -Wextra -pipe -march=x86-64-v2
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto -march=x86-64-v2
 else
-png2webp_dynamic: CFLAGS ?= -O3 -Wall -Wextra -pipe
+png2webp_dynamic exestamp: CFLAGS ?= -O3 -Wall -Wextra -pipe
 CFLAGS ?= -O3 -Wall -Wextra -pipe -flto=auto
 endif
 endif
