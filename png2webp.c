@@ -311,7 +311,8 @@ static bool w2p(char *ip, char *op) {
   char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
-  if(!fread(i, 12, 1, fp)) {
+#define R(x, y) !fread(x, y, 1, fp)
+  if(R(i, 12)) {
     P("ERROR reading: %s", k[6]);
     goto w2p_close;
   }
@@ -331,19 +332,13 @@ static bool w2p(char *ip, char *op) {
     goto w2p_close;
   }
   memcpy(x, i, 12); // should optimize out
-  uint8_t *z = x + 12;
-  uint32_t m = l - 12;
+  if(
 #if defined __ANDROID__ && __ANDROID_API__ < 34
-  if(m > 0x7fffffff) { // https://issuetracker.google.com/240139009
-    if(!fread(z, 0x7fffffff, 1, fp)) {
-      P("ERROR reading: %s", k[6]);
-      goto w2p_close;
-    }
-    z += 0x7fffffff;
-    m -= 0x7fffffff;
-  }
+      l - 12 > 0x7fffffff // https://issuetracker.google.com/240139009
+	  ? R(x + 12, 0x7fffffff) || R(x + 12 + 0x7fffffff, l - 12 - 0x7fffffff)
+	  :
 #endif
-  if(!fread(z, m, 1, fp)) {
+	  R(x + 12, l - 12)) {
     P("ERROR reading: %s", k[6]);
     goto w2p_close;
   }
