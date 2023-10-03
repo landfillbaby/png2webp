@@ -43,7 +43,7 @@ support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
 negative cli flags?
 
 look into other PNG interfaces, maybe make a simple custom one
-didn't like libspng. try lodepng?
+libspng or lodepng? miniz or zlib-ng too?
 maybe option to use libwebp imageio for input and output
 just be a wrapper and nothing else
 
