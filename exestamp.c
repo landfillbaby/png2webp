@@ -9,14 +9,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef _WIN32
-#define F _fseeki64
+#define S _fseeki64
 #elif LONG_MAX > 0xfffffffe
-#define F fseek
+#define S fseek
 #else
 struct static_assert_old {
   int off_t_too_small: (off_t)0xffffffff < 0xffffffffll ? -1 : 1;
 };
-#define F fseeko
+#define S fseeko
 #endif
 int main(int argc, char **argv) {
   char *n;
@@ -38,8 +38,8 @@ STAMP: new Unix timestamp,\n\
   uint8_t b[4];
 #define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
 #define R(x) !fread(b, x, 1, f)
-  if(R(2) || u2(b) != u2("MZ") || F(f, 60, SEEK_SET) || R(4)
-      || F(f, B, SEEK_SET) || R(4) || u4(b) != u4("PE\0") || F(f, 4, SEEK_CUR)
+  if(R(2) || u2(b) != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
+      || S(f, B, SEEK_SET) || R(4) || u4(b) != u4("PE\0") || S(f, 4, SEEK_CUR)
       || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
@@ -49,7 +49,7 @@ STAMP: new Unix timestamp,\n\
   else {
     printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
 #define T(x) ((t >> x) & 255)
-    if(F(f, -4, SEEK_CUR)
+    if(S(f, -4, SEEK_CUR)
 	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
       perror("ERROR writing new timestamp");
       fclose(f);
