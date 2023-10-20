@@ -2,6 +2,11 @@ see also the TODO comments in the files themselves
 
 check WEBP_REDUCE_SIZE works with all #if in png2webp.c
 
+endian-independent code without adding more swaps on little?
+
+restrict const register static etc? or just rely on clang
+e.g. static WebPConfig?
+
 configure: LOSSYISERROR NOVLA DOFLUSH USEGETOPT
 maybe just use autoconf
 
@@ -12,6 +17,9 @@ make a separate build batch for it (or cmake?)
 make sure NOTHREADS is !WEBP_USE_THREAD
 
 add some flags to libpng configure. no phys and other useless stuff
+after that, add a bunch of patches to the submodules
+to make static builds even smaller
+no config structs required just hardcode it
 
 minimize static build by making strings match some library one where possible
 
@@ -27,15 +35,19 @@ clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 no setjmp/longjmp ??
 use custom struct with png_create_(read|write)_struct and png_get_error_ptr
 
+LOSSYISERROR variant: work with RIFFxxxxWEBPVP8Lyyyy/ directly.
+x > y && (x == y + 12 || (y % 2 && x == y + 13))
+
 try to make close+unlink atomic, like a delete on close flag: FIO01-C
-windows: FILE_SHARE_DELETE, FILE_DISPOSITION_INFO
+windows: FILE_DISPOSITION_INFO or ReOpenFile+FILE_FLAG_DELETE_ON_CLOSE
 freebsd: funlinkat
 other OSes: ???
 maybe instead make a temporary file and copy or rename it on success?
 postpones EEXIST until after encoding is done, as well as decoding as before
 linux 3.11+ (not android): O_TMPFILE, linkat. how to do -f?
-windows: FILE_SHARE_DELETE, FILE_RENAME_INFO
+windows: FILE_RENAME_INFO
 other OSes: ???
+or just write to dynamic memory buffer then try to write all at once
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
@@ -46,8 +58,6 @@ look into other PNG interfaces, maybe make a simple custom one
 libspng or lodepng? miniz or zlib-ng too?
 maybe option to use libwebp imageio for input and output
 just be a wrapper and nothing else
-
-restrict const register static etc? or just rely on clang
 
 -DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
 
