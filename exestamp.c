@@ -60,4 +60,5 @@ STAMP: new Unix timestamp,\n\
     perror("ERROR closing file");
     return 1;
   }
+  return 0;
 }
