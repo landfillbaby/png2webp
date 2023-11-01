@@ -32,7 +32,15 @@ equivalent to `cwebp -z 9`.
 `--`: Explicitly stop parsing options.
 
 ## Drag and drop
-The `.bat` (Windows) and `.sh` (Unix-like) wrappers do 2 things:
+The
+[`png2webp.bat`](https://github.com/landfillbaby/png2webp/raw/main/png2webp.bat)
+and
+[`webptopng.bat`](https://github.com/landfillbaby/png2webp/raw/main/webptopng.bat)
+(Windows) and
+[`png2webp.sh`](https://github.com/landfillbaby/png2webp/raw/main/png2webp.sh)
+and
+[`webptopng.sh`](https://github.com/landfillbaby/png2webp/raw/main/webptopng.sh)
+ (Unix-like) wrappers do 2 things:
 * Specify `-v --` (`-rv --` in the case of `webptopng.*`).
 * Wait for user input if errors happen.
 
