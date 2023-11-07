@@ -10,7 +10,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
+        fetch-depth: 0 # 1 if using alternate method
         token: ${{secrets.PUSH_TOKEN}}
     - name: Import GPG key
       uses: crazy-max/ghaction-import-gpg@v6
@@ -22,13 +22,34 @@ jobs:
       run: |
         if git commit -S -am"Update submodules (automated)
 
-        $(git submodule --quiet foreach \
-          'tag="$(git describe --tags --abbrev=0 origin/HEAD)"
+        $(git submodule -q foreach 'tag="$(
+
+            # tag closest behind origin/HEAD
+            git describe --tags --abbrev=0 origin/HEAD
+
+            # alternate method 1: latest release
+            # gh api repos/{owner}/{repo}/releases/latest -q .tag_name
+
+            # alternate method 2: newest tag by date:
+            # gh api graphql -F owner="{owner}" -F name="{repo}" -f query="
+            #   query(\$name: String!, \$owner: String!) {
+            #     repository(owner: \$owner, name: \$name) {
+            #       refs(
+            #         refPrefix: \"refs/tags/\",
+            #         first: 1,
+            #         orderBy: { field: TAG_COMMIT_DATE, direction: DESC }
+            #       ) { edges { node { name } } }
+            #     }
+            #   }" -q ".data.repository.refs.edges[].node.name"
+
+          )"
           if [ "$(git describe --tags)" != "$tag" ]; then
-            git checkout --quiet "$tag"
+            # if using alternate method:
+            # git fetch -q --depth 1 origin tag "$tag"
+            git checkout -q "$tag"
             echo "$name" "$tag"
-          fi')"
-        then
+          fi'
+        )"; then
           git show --raw
           git push
         fi
