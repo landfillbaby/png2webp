@@ -454,7 +454,8 @@ static bool w2p(char *ip, char *op) {
       (double)pnglen * 8 / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
-int main(int argc, char **argv) {
+int main(int sargc, char **argv) {
+  unsigned argc = (unsigned)sargc;
   { // should optimize out
     uint32_t endian = u4("\xAA\xBB\xCC\xDD");
     if(endian == 0xAABBCCDD)
@@ -466,7 +467,7 @@ int main(int argc, char **argv) {
   }
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
-  for(int c; (c = getopt(argc, argv, ":prefvt")) != -1;)
+  for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
     switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
@@ -490,16 +491,15 @@ int main(int argc, char **argv) {
       default: return help();
     }
 #ifdef USEGETOPT
-  argc -= optind;
-  argv += optind;
+  argc -= (unsigned)optind;
+  argv += (unsigned)optind;
 #else
 endflagloop:
 #endif
-#define URGC (unsigned)argc
 #define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
   if(pipe) {
-    if(URGC > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0))
-	|| ((usestdout = (URGC < 2 || PIPEARG(1))) && isatty(1)))
+    if(argc > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0))
+	|| ((usestdout = (argc < 2 || PIPEARG(1))) && isatty(1)))
       return help();
 #ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
