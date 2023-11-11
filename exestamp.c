@@ -27,14 +27,19 @@ STAMP: new Unix timestamp,\n\
       stderr);
   return -1;
 }
-int main(int argc, char **argv) {
-#if defined __GNUC__ && !defined __clang__
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4701)
+#elif defined __GNUC__ && !defined __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+int main(int argc, char **argv) {
   uint32_t t;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#elif defined __GNUC__ && !defined __clang__
 #pragma GCC diagnostic pop
-#else
-  uint32_t t;
 #endif
   bool w;
   switch(argc) {
@@ -64,16 +69,14 @@ int main(int argc, char **argv) {
     return 1;
   }
   if(w) {
-    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B,
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconditional-uninitialized"
-	t
-#pragma GCC diagnostic pop
-#else
-	t
 #endif
-    );
+    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif
 #define T(x) ((t >> x) & 255)
     if(S(f, -4, SEEK_CUR)
 	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
