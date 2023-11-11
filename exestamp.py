@@ -12,7 +12,7 @@ if __name__ == '__main__':
     f, p = t(), p('<I')
     f, t, p, u = f.exe, f.stamp, p.pack, p.unpack
     with open(f, 'rb' if t is None else 'rb+') as f:
-        r, w, s = f.read, f.write, f.seek
+        r, s = f.read, f.seek
         def f(): return u(r(4))[0]
         if r(2) != b'MZ':
             raise ValueError('Not a Windows PE32(+) file')
@@ -28,4 +28,4 @@ if __name__ == '__main__':
             print('old:', f())
             print('new:', t)
             s(-4, 1)
-            w(p(t))
+            f.write(p(t))

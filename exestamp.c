@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef _WIN32
@@ -18,19 +19,36 @@ struct static_assert_old {
 };
 #define S fseeko
 #endif
-int main(int argc, char **argv) {
-  char *n;
-  uint32_t t;
-  if(argc < 2 || argc > 3 || isspace(*argv[2])
-      || ((void)(t = (uint32_t)strtoll(argv[2], &n, 0)), *n) || errno) {
-    fputs("Usage: exestamp EXE [STAMP]\n\
+static int help(void) {
+  fputs("Usage: exestamp EXE [STAMP]\n\
 EXE:   Windows PE32(+) file\n\
 STAMP: new Unix timestamp,\n\
        decimal, octal (leading 0), or hexadecimal (leading 0x)\n",
-	stderr);
-    return -1;
+      stderr);
+  return -1;
+}
+int main(int argc, char **argv) {
+#if defined __GNUC__ && !defined __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+  uint32_t t;
+#pragma GCC diagnostic pop
+#else
+  uint32_t t;
+#endif
+  bool w;
+  switch(argc) {
+    case 2: w = 0; break;
+    case 3:
+      if(isspace(*argv[2])) return help();
+      char *n;
+      t = (uint32_t)strtoll(argv[2], &n, 0);
+      if(*n || errno) return help();
+      w = 1;
+      break;
+    default: return help();
   }
-  FILE *f = fopen(argv[1], argc < 3 ? "rb" : "rb+");
+  FILE *f = fopen(argv[1], w ? "rb+" : "rb");
   if(!f) {
     perror("ERROR opening file");
     return 1;
@@ -45,9 +63,17 @@ STAMP: new Unix timestamp,\n\
     fclose(f);
     return 1;
   }
-  if(argc < 3) printf("%" PRIu32 "\n", B);
-  else {
-    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
+  if(w) {
+    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B,
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconditional-uninitialized"
+	t
+#pragma GCC diagnostic pop
+#else
+	t
+#endif
+    );
 #define T(x) ((t >> x) & 255)
     if(S(f, -4, SEEK_CUR)
 	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
@@ -55,10 +81,13 @@ STAMP: new Unix timestamp,\n\
       fclose(f);
       return 1;
     }
-  }
-  if(fclose(f)) {
-    perror("ERROR closing file");
-    return 1;
+    if(fclose(f)) {
+      perror("ERROR writing new timestamp");
+      return 1;
+    }
+  } else {
+    fclose(f);
+    printf("%" PRIu32 "\n", B);
   }
   return 0;
 }
