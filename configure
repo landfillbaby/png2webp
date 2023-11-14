@@ -30,17 +30,18 @@ CPPFLAGS="-I$PWD/zlib -I$PWD/libpng -I$PWD/libwebp -I$PWD/libwebp/src"
 CPPFLAGS="$CPPFLAGS -DWEBP_REDUCE_SIZE $origCPPFLAGS"
 echo configuring zlib...
 cd zlib
-./configure
+./configure --static --solo --const
 echo configured zlib
 echo configuring libpng...
 cd ../libpng
 cp scripts/pnglibconf.h.prebuilt pnglibconf.h
-./configure --enable-hardware-optimizations ac_cv_lib_z_zlibVersion=yes "$@"
+./configure --enable-static=yes --enable-shared=no \
+	--enable-hardware-optimizations ac_cv_lib_z_zlibVersion=yes "$@"
 echo configured libpng
 echo configuring libwebp...
 cd ../libwebp
 ./autogen.sh
-./configure --disable-near-lossless "$@"
+./configure --enable-static=yes --enable-shared=no --disable-near-lossless "$@"
 echo configured libwebp
 cd ..
 CPPFLAGS="$origCPPFLAGS"
