@@ -4,6 +4,25 @@ Simple command-line batch PNG to WebP converter (and vice versa).
 `png2webp` writes optimized lossless WebP versions of every PNG given,
 equivalent to `cwebp -z 9`.
 
+# Warning
+The following data will be lost in conversion:
+- Animation. Support may be added in a future release.
+- Metadata. Ditto.
+- Color depth if an input PNG isn't 8 bits per channel,
+  or if its gamma value isn't the sRGB standard of 2.2.
+  These are limits of the WebP format. The program will issue a warning.
+- Color values of invisible pixels (alpha = 0) in input PNGs,
+  unless `-e` flag is given.
+- Color palettes. The colors themselves are preserved,
+  but the knowledge of previous presence or absence of a palette,
+  including its order and any unused colors, are lost.
+  Palettes are part of the WebP format,
+  and paletted PNGs will probably be indirectly converted into paletted WebPs,
+  but palettes are not exposed for reading or writing by `libwebp`.
+  [I sent a feature request in 2019](https://crbug.com/webp/437)
+  but it looks like they won't be implementing it.
+- Other minutiae of the internal format of the input images.
+
 # Usage
 
     png2webp [-refv-] INFILE ...

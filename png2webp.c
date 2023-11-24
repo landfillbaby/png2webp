@@ -243,8 +243,8 @@ static bool p2w(char *ip, char *op) {
     }
   }
   png_read_end(p, 0);
-  png_destroy_read_struct(&p, &n, 0);
   fclose(fp);
+  png_destroy_read_struct(&p, &n, 0);
   char *f[] = {"grayscale", "???", "RGB", "paletted", "grayscale + alpha",
       "???", "RGBA"};
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32
@@ -423,9 +423,9 @@ static bool w2p(char *ip, char *op) {
     fclose(fp);
   w2p_free:
     if(openwdone) unlink(op);
+    png_destroy_write_struct(&p, &n);
     free(x);
     if(b) free(b);
-    png_destroy_write_struct(&p, &n);
     return 1;
   }
   pnglen = 0;
@@ -441,15 +441,12 @@ static bool w2p(char *ip, char *op) {
     w += W * B;
   }
   png_write_end(p, n);
-  png_destroy_write_struct(&p, &n);
-  p = 0;
-  n = 0;
-  free(b);
-  b = 0;
   if(fclose(fp)) {
     perror("ERROR writing");
     goto w2p_free;
   }
+  png_destroy_write_struct(&p, &n);
+  free(b);
   PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s", pnglen,
       (double)pnglen * 8 / (W * H), A ? "RGBA" : "RGB");
   return 0;
