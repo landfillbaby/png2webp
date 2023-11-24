@@ -493,10 +493,10 @@ int main(int sargc, char **argv) {
 #else
 endflagloop:
 #endif
-#define PIPEARG(x) (*argv[x] == '-' && !argv[x][1])
+#define PIPEARG(x) (argc <= x || (*argv[x] == '-' && !argv[x][1]))
   if(pipe) {
-    if(argc > 2 || ((usestdin = (!argc || PIPEARG(0))) && isatty(0))
-	|| ((usestdout = (argc < 2 || PIPEARG(1))) && isatty(1)))
+    if(argc > 2 || ((usestdin = PIPEARG(0)) && isatty(0))
+	|| ((usestdout = PIPEARG(1)) && isatty(1)))
       return help();
 #ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
