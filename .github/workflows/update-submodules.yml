@@ -45,9 +45,9 @@ jobs:
           )"
           if [ "$(git describe --tags)" != "$tag" ]; then
             # if using alternate method:
-            # git fetch -q --depth 1 origin tag "$tag"
-            git checkout -q "$tag"
-            echo "$name" "$tag"
+            # git fetch -q --depth 1 origin tag -- "$tag"
+            git switch -q -- "$tag"
+            printf "%s\n" "$name $tag"
           fi'
         )"; then
           git show --raw
