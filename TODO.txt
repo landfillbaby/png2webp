@@ -1,5 +1,8 @@
 see also the TODO comments in the files themselves
 
+less gotos especially in p2w
+try to minimize null frees without making a bigger exe
+
 check WEBP_REDUCE_SIZE works with all #if in png2webp.c
 
 endian-independent code without adding more swaps on little?
@@ -22,11 +25,6 @@ to make static builds even smaller
 no config structs required just hardcode it
 
 minimize static build by making strings match some library one where possible
-
-rewrite w2p error handling to avoid the openwdone nonsense
-try to minimize null frees without making a bigger exe
-maybe no gotos at all, in the same order, and let the compiler figure it out?
-same with p2w, just completely redo both
 
 parallelize more, multiple conversions at once?
 needs no global pnglen, total rewrite of terminal output

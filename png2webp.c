@@ -304,32 +304,33 @@ static bool w2p(char *ip, char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
-  bool openwdone = 0;
-  uint8_t *x = 0, *b = 0, i[12];
-  png_struct *p = 0;
-  png_info *n = 0;
+  uint8_t i[12];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
 #define R(x, y) !fread(x, y, 1, fp)
   if(R(i, 12)) {
     P("ERROR reading: %s", k[6]);
-    goto w2p_close;
+    fclose(fp);
+    return 1;
   }
   if(u4(i) != u4("RIFF") || u4(i + 8) != u4("WEBP")) {
     P("ERROR reading: %s", k[2]);
-    goto w2p_close;
+    fclose(fp);
+    return 1;
   }
   // RIFF header size
   uint32_t l = (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
   if(l < 28 || l > 0xfffffffe) {
     P("ERROR reading: %s", k[2]);
-    goto w2p_close;
+    fclose(fp);
+    return 1;
   }
-  x = malloc(l);
+  uint8_t *x = malloc(l);
   if(!x) {
     P("ERROR reading: %s", *k);
-    goto w2p_close;
+    fclose(fp);
+    return 1;
   }
   memcpy(x, i, 12); // should optimize out
   if(
@@ -340,7 +341,9 @@ static bool w2p(char *ip, char *op) {
 #endif
 	  R(x + 12, l - 12)) {
     P("ERROR reading: %s", k[6]);
-    goto w2p_close;
+    fclose(fp);
+    free(x);
+    return 1;
   }
   fclose(fp);
 #if defined LOSSYISERROR || defined NOTHREADS
@@ -352,7 +355,8 @@ static bool w2p(char *ip, char *op) {
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
   if(r) {
     P("ERROR reading: %s", k[r - 1]);
-    goto w2p_free;
+    free(x);
+    return 1;
   }
 #define V I.format
 #define W ((uint32_t)I.width)
@@ -371,25 +375,30 @@ static bool w2p(char *ip, char *op) {
       W, H, l, l * 8. / (W * H), A ? "yes" : "no" FMTARG);
   if(I.has_animation) {
     P("ERROR reading: %s", "Unsupported feature: animation");
-    goto w2p_free;
+    free(x);
+    return 1;
   }
 #ifdef LOSSYISERROR
   if(V != 2) {
     P("ERROR reading: %s", "Unsupported feature: lossy compression");
-    goto w2p_free;
+    free(x);
+    return 1;
   }
 #endif
 #define B ((unsigned)(3 + A))
-  b = malloc(W * H * B);
+  uint8_t *b = malloc(W * H * B);
   if(!b) {
     P("ERROR reading: %s", *k);
-    goto w2p_free;
+    free(x);
+    return 1;
   }
 #if defined LOSSYISERROR || defined NOTHREADS
   if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(
 	 x, l, b, W * H * B, (int)(W * B))) {
     P("ERROR reading: %s", k[2]);
-    goto w2p_free;
+    free(b);
+    free(x);
+    return 1;
   }
 #else
   c.output.colorspace = A ? MODE_RGBA : MODE_RGB;
@@ -401,14 +410,19 @@ static bool w2p(char *ip, char *op) {
   r = WebPDecode(x, l, &c);
   if(r) {
     P("ERROR reading: %s", k[r - 1]);
-    goto w2p_free;
+    free(b);
+    free(x);
+    return 1;
   }
 #endif
   free(x);
-  x = 0;
-  if(!(fp = openw(op))) goto w2p_free;
-  openwdone = !!op;
-  p = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
+  if(!(fp = openw(op))) {
+    free(b);
+    return 1;
+  }
+  png_info *n = 0;
+  png_struct *p
+      = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
   if(!p) {
     P("ERROR writing: %s", *k);
     goto w2p_close;
@@ -421,11 +435,10 @@ static bool w2p(char *ip, char *op) {
   if(setjmp(png_jmpbuf(p))) {
   w2p_close:
     fclose(fp);
-  w2p_free:
-    if(openwdone) unlink(op);
+  w2p_rm:
+    if(op) unlink(op);
     png_destroy_write_struct(&p, &n);
-    free(x);
-    if(b) free(b);
+    free(b);
     return 1;
   }
   pnglen = 0;
@@ -443,7 +456,7 @@ static bool w2p(char *ip, char *op) {
   png_write_end(p, n);
   if(fclose(fp)) {
     perror("ERROR writing");
-    goto w2p_free;
+    goto w2p_rm;
   }
   png_destroy_write_struct(&p, &n);
   free(b);
