@@ -44,8 +44,8 @@ static int help(void) {
   fputs("PNG2WebP " VERSION "\n\
 \n\
 Usage:\n\
-png2webp [-refv-] INFILE ...\n\
-png2webp -p[refv-] [INFILE [OUTFILE]]\n\
+png2webp [-refv] [--] INFILE ...\n\
+png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
 \n\
 -p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
@@ -481,8 +481,14 @@ int main(int sargc, char **argv) {
     switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
-    while(*++*argv)
-      switch(**argv)
+    if(argv[0][1] == '-') {
+      if(argv[0][2]) return help();
+      argc--;
+      argv++;
+      break;
+    } else
+      while(*++*argv)
+	switch(**argv)
 #endif
     {
       case 'p': pipe = 1; break;
@@ -491,20 +497,11 @@ int main(int sargc, char **argv) {
       case 'f': force = 1; break;
       case 'v': verbose = 1; break;
       case 't': doprogress = 1; break;
-#ifndef USEGETOPT
-      case '-':
-	if(argv[0][1]) return help();
-	argc--;
-	argv++;
-	goto endflagloop;
-#endif
       default: return help();
     }
 #ifdef USEGETOPT
   argc -= (unsigned)optind;
   argv += (unsigned)optind;
-#else
-endflagloop:
 #endif
 #define PIPEARG(x) (argc <= x || (*argv[x] == '-' && !argv[x][1]))
   if(pipe) {

@@ -25,8 +25,8 @@ The following data will be lost in conversion:
 
 # Usage
 
-    png2webp [-refv-] INFILE ...
-    png2webp -p[refv-] [INFILE [OUTFILE]]
+    png2webp [-refv] [--] INFILE ...
+    png2webp -p[refv] [--] [INFILE [OUTFILE]]
 
 `-p`: Work with a single file, allowing Piping from stdin or to stdout,
     or using a different output filename to the input.
