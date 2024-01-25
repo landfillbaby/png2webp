@@ -4,7 +4,7 @@
 #include "p2wconf.h"
 #endif
 #ifndef VERSION
-#define VERSION "v1.2.0"
+#define VERSION "v1.2.1"
 #endif
 #define _FILE_OFFSET_BITS 64
 #include "pun.h"
