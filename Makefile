@@ -55,6 +55,9 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/arm/arm_init.c libpng/arm/filter_neon_intrinsics.c \
 	libpng/arm/palette_neon_intrinsics.c \
 	libpng/intel/filter_sse2_intrinsics.c libpng/intel/intel_init.c \
+	libpng/loongarch/filter_lsx_intrinsics.c \
+	libpng/loongarch/loongarch_lsx_init.c \
+	libpng/mips/filter_mmi_inline_assembly.c \
 	libpng/mips/filter_msa_intrinsics.c libpng/mips/mips_init.c \
 	libpng/powerpc/filter_vsx_intrinsics.c libpng/powerpc/powerpc_init.c \
 	zlib/adler32.c zlib/crc32.c zlib/deflate.c zlib/infback.c \
