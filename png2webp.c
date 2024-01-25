@@ -37,9 +37,6 @@
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
-#if defined __GNUC__ && !defined __clang__
-#pragma GCC diagnostic ignored "-Wclobbered"
-#endif
 static int help(void) {
   fputs("PNG2WebP " VERSION "\n\
 \n\
