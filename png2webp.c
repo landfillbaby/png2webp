@@ -38,11 +38,14 @@
 #define O_BINARY 0u
 #endif
 #endif
+#if defined __STDC_NO_VLA__ && !defined NOVLA
+#define NOVLA
+#endif
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
 static int help(void) {
-  fputs("PNG2WebP " VERSION "\n\
+  fputs("PNG2WebP " VERSION /*TODO*/ " - threading branch\n\
 \n\
 Usage:\n\
 png2webp [-refv] [--] INFILE ...\n\
@@ -119,7 +122,13 @@ static FILE *openw(char *op) {
 #endif
   return fp;
 }
-static size_t pnglen;
+static __thread size_t pnglen;
+/* ^ TODO
+typedef struct {
+  size_t pnglen;
+  FILE *fp;
+} pngptr;
+*/
 static void pngread(png_struct *p, uint8_t *d, size_t s) {
   if(!fread(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
@@ -255,7 +264,7 @@ static bool p2w(char *ip, char *op) {
       width, height, pnglen, (double)pnglen * 8u / (width * height), bitdepth,
       f[(unsigned)colortype], trns ? ", with transparency" : "",
       passes > 1u ? ", interlaced" : "");
-  WebPConfig c;
+  WebPConfig c; // TODO: global static, move assignment to main?
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100u)) {
     P("ERROR writing: %s", k[3]);
     goto p2w_free;
@@ -266,7 +275,7 @@ static bool p2w(char *ip, char *op) {
 #ifndef NOTHREADS
   c.thread_level = 1; // doesn't seem to affect output
 #endif
-  c.exact = exact;
+  c.exact = exact; // end TODO
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
@@ -467,6 +476,58 @@ static bool w2p(char *ip, char *op) {
       (double)pnglen * 8u / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
+static bool p2wwrap(char *ip) {
+  size_t len = strlen(ip);
+  if(len > 3u && (u4(ip + len - 4u) | u4("\0   ")) == u4(".png")) len -= 4u;
+#ifdef NOVLA
+  char *op = malloc(len + 6u);
+  if(!op) {
+    P("ERROR adding %s extension to %s: %s", ".webp", ip, "Out of memory");
+    return 1;
+  }
+#elif defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvla"
+  char op[len + 6u];
+#pragma GCC diagnostic pop
+#else
+  char op[len + 6u];
+#endif
+  memcpy(op + len, ".webp", 6u);
+  memcpy(op, ip, len); // the only real memcpy
+  bool ret = p2w(ip, op);
+#ifdef NOVLA
+  free(op);
+#endif
+  return ret;
+}
+static bool w2pwrap(char *ip) {
+  size_t len = strlen(ip);
+  if(len > 4u && ip[len - 5u] == '.'
+      && (u4(ip + len - 4u) | u4("    ")) == u4("webp"))
+    len -= 5u;
+#ifdef NOVLA
+  char *op = malloc(len + 5u);
+  if(!op) {
+    P("ERROR adding %s extension to %s: %s", ".png", ip, "Out of memory");
+    return 1;
+  }
+#elif defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvla"
+  char op[len + 5u];
+#pragma GCC diagnostic pop
+#else
+  char op[len + 5u];
+#endif
+  memcpy(op + len, ".png", 5u);
+  memcpy(op, ip, len); // the only real memcpy
+  bool ret = w2p(ip, op);
+#ifdef NOVLA
+  free(op);
+#endif
+  return ret;
+}
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
   if(pun_h_check()) return 1;
@@ -514,64 +575,12 @@ int main(int sargc, char **argv) {
   if(!argc) return help();
   bool ret = 0;
   if(reverse)
-    for(; argc; argc--, argv++) {
-      size_t len = strlen(*argv);
-      if(len > 4u && argv[0][len - 5u] == '.'
-	  && (u4(*argv + len - 4u) | u4("    ")) == u4("webp"))
-	len -= 5u;
-#if defined __STDC_NO_VLA__ && !defined NOVLA
-#define NOVLA
-#endif
-#ifdef NOVLA
-      char *op = malloc(len + 5u);
-      if(!op) {
-	P("ERROR adding %s extension to %s: %s", ".png", *argv,
-	    "Out of memory");
-	return 1;
-      }
-#elif defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvla"
-      char op[len + 5u];
-#pragma GCC diagnostic pop
-#else
-      char op[len + 5u];
-#endif
-      memcpy(op + len, ".png", 5u);
-      memcpy(op, *argv, len); // the only real memcpy
-      ret = w2p(*argv, op) || ret;
-#ifdef NOVLA
-      free(op);
-#endif
-    }
+#pragma omp parallel for // TODO: pthread, fix stderr output
+    for(int x = argc; x > 0; x--) ret = w2pwrap(*argv++) || ret;
   else {
     if(!doprogress) doprogress = isatty(2);
-    for(; argc; argc--, argv++) {
-      size_t len = strlen(*argv);
-      if(len > 3u && (u4(*argv + len - 4u) | u4("\0   ")) == u4(".png"))
-	len -= 4u;
-#ifdef NOVLA
-      char *op = malloc(len + 6u);
-      if(!op) {
-	P("ERROR adding %s extension to %s: %s", ".webp", *argv,
-	    "Out of memory");
-	return 1;
-      }
-#elif defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvla"
-      char op[len + 6u];
-#pragma GCC diagnostic pop
-#else
-      char op[len + 6u];
-#endif
-      memcpy(op + len, ".webp", 6u);
-      memcpy(op, *argv, len); // the only real memcpy
-      ret = p2w(*argv, op) || ret;
-#ifdef NOVLA
-      free(op);
-#endif
-    }
+#pragma omp parallel for // TODO: ditto
+    for(int x = argc; x > 0; x--) ret = p2wwrap(*argv++) || ret;
   }
   return ret;
 }
