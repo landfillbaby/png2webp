@@ -29,7 +29,7 @@ STAMP: new Unix timestamp,\n\
 }
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable: 4701)
+#pragma warning(disable : 4701)
 #elif defined __GNUC__ && !defined __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
@@ -68,29 +68,29 @@ int main(int argc, char **argv) {
     fclose(f);
     return 1;
   }
-  if(w) {
+  if(!w) {
+    fclose(f);
+    printf("%" PRIu32 "\n", B);
+    return 0;
+  }
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconditional-uninitialized"
 #endif
-    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
+  printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
 #ifdef __clang__
 #pragma GCC diagnostic pop
 #endif
 #define T(x) ((t >> x) & 255)
-    if(S(f, -4, SEEK_CUR)
-	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
-      perror("ERROR writing new timestamp");
-      fclose(f);
-      return 1;
-    }
-    if(fclose(f)) {
-      perror("ERROR writing new timestamp");
-      return 1;
-    }
-  } else {
+  if(S(f, -4, SEEK_CUR)
+      || !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
+    perror("ERROR writing new timestamp");
     fclose(f);
-    printf("%" PRIu32 "\n", B);
+    return 1;
+  }
+  if(fclose(f)) {
+    perror("ERROR writing new timestamp");
+    return 1;
   }
   return 0;
 }
