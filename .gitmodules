@@ -1,9 +1,12 @@
 [submodule "zlib"]
 	path = zlib
 	url = https://github.com/madler/zlib.git
+	shallow = true
 [submodule "libpng"]
 	path = libpng
 	url = https://github.com/pnggroup/libpng.git
+	shallow = true
 [submodule "libwebp"]
 	path = libwebp
 	url = https://github.com/webmproject/libwebp.git
+	shallow = true

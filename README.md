@@ -71,7 +71,7 @@ Rename the wrappers if you want, but don't rename the program.
 Download the sources for libpng, zlib, and libwebp,
 and place them in the supplied folders, or run
 
-    git submodule update --init --depth 1
+    git submodule update --init
 
 Then run `./configure`. (Try `./configure --help` to see some optional flags.)
 
