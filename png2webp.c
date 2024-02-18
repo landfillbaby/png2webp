@@ -211,7 +211,7 @@ static bool p2w(char *ip, char *op) {
   E(expand);
   E(gray_to_rgb);
   E(packing);
-  if(*(uint8_t *)&(uint16_t){1}) {
+  if(u2("\1") == 1) {
     E(bgr);
     S(add_alpha, 255, PNG_FILLER_AFTER);
   } else { // TODO: see big-endian below
