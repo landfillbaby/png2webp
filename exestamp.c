@@ -59,25 +59,24 @@ int main(int argc, char **argv) {
     return 1;
   }
   uint8_t b[4];
-#define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
 #define R(x) !fread(b, x, 1, f)
   if(R(2) || u2(b) != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
-      || S(f, B, SEEK_SET) || R(4) || u4(b) != u4("PE\0") || S(f, 4, SEEK_CUR)
-      || R(4)) {
+      || S(f, l4(b), SEEK_SET) || R(4) || u4(b) != u4("PE\0")
+      || S(f, 4, SEEK_CUR) || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
     return 1;
   }
   if(!w) {
     fclose(f);
-    printf("%" PRIu32 "\n", B);
+    printf("%" PRIu32 "\n", l4(b));
     return 0;
   }
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconditional-uninitialized"
 #endif
-  printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
+  printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
 #ifdef __clang__
 #pragma GCC diagnostic pop
 #endif

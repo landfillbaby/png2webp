@@ -318,7 +318,7 @@ static bool w2p(char *ip, char *op) {
     return 1;
   }
   // RIFF header size
-  uint32_t l = (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
+  uint32_t l = l4(i + 4) + 8;
   if(l < 28 || l > 0xfffffffe) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);

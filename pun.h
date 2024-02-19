@@ -23,4 +23,7 @@ static inline uint64_t u8(const void *x) {
   memcpy(&r, x, 8);
   return r;
 }
+static inline uint32_t l4(const uint8_t *x) {
+  return (uint32_t)(*x | (x[1] << 8) | (x[2] << 16) | (x[3] << 24));
+}
 #endif
