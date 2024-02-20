@@ -14,15 +14,13 @@ if __name__ == '__main__':
     with open(f, 'rb' if t is None else 'rb+') as f:
         r, s = f.read, f.seek
         def f(): return u(r(4))[0]
-        if r(2) != b'MZ':
-            raise ValueError('Not a Windows PE32(+) file')
+        m = 'Not a Windows PE32(+) file'
+        if r(2) != b'MZ': raise ValueError(m)
         s(60)
         s(f())
-        if r(4) != b'PE\0\0':
-            raise ValueError('Not a Windows PE32(+) file')
+        if r(4) != b'PE\0\0': raise ValueError(m)
         s(4, 1)
-        if t is None:
-            print(f())
+        if t is None: print(f())
         else:
             t &= 0xffffffff
             print('old:', f())
