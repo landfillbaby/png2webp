@@ -1,6 +1,8 @@
 // anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
+#ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+#endif
 #include "pun.h"
 #include <ctype.h>
 #include <errno.h>
@@ -27,20 +29,8 @@ STAMP: new Unix timestamp,\n\
       stderr);
   return -1;
 }
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4701)
-#elif defined __GNUC__ && !defined __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
 int main(int argc, char **argv) {
-  uint32_t t;
-#ifdef _MSC_VER
-#pragma warning(pop)
-#elif defined __GNUC__ && !defined __clang__
-#pragma GCC diagnostic pop
-#endif
+  uint32_t t = 0; // initialize to avoid false warnings
   bool w;
   switch(argc) {
     case 2: w = 0; break;
@@ -72,14 +62,7 @@ int main(int argc, char **argv) {
     printf("%" PRIu32 "\n", l4(b));
     return 0;
   }
-#ifdef __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconditional-uninitialized"
-#endif
   printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
-#ifdef __clang__
-#pragma GCC diagnostic pop
-#endif
 #define T(x) ((t >> x) & 255)
   if(S(f, -4, SEEK_CUR)
       || !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
