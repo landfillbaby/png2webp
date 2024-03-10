@@ -63,9 +63,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
-#define T(x) ((t >> x) & 255)
-  if(S(f, -4, SEEK_CUR)
-      || !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
+  if(S(f, -4, SEEK_CUR) || !fwrite(l4o(t, (uint8_t[4]){0}), 4, 1, f)) {
     perror("ERROR writing new timestamp");
     fclose(f);
     return 1;
