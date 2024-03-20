@@ -31,18 +31,13 @@ STAMP: new Unix timestamp,\n\
 }
 int main(int argc, char **argv) {
   uint32_t t = 0; // initialize to avoid false warnings
-  bool w;
-  switch(argc) {
-    case 2: w = 0; break;
-    case 3:
-      if(isspace(*argv[2])) return help();
-      char *n;
-      t = (uint32_t)strtoll(argv[2], &n, 0);
-      if(*n || errno) return help();
-      w = 1;
-      break;
-    default: return help();
-  }
+  bool w = argc == 3;
+  if(w) {
+    if(isspace(*argv[2])) return help();
+    char *n;
+    t = (uint32_t)strtoll(argv[2], &n, 0);
+    if(*n || errno) return help();
+  } else if(argc != 2) return help();
   FILE *f = fopen(argv[1], w ? "rb+" : "rb");
   if(!f) {
     perror("ERROR opening file");
@@ -57,20 +52,19 @@ int main(int argc, char **argv) {
     fclose(f);
     return 1;
   }
-  if(!w) {
+  if(w) {
+    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
+    if(S(f, -4, SEEK_CUR) || !fwrite(l4o(t, (uint8_t[4]){0}), 4, 1, f)) {
+      perror("ERROR writing new timestamp");
+      fclose(f);
+      return 1;
+    }
+    if(fclose(f)) {
+      perror("ERROR writing new timestamp");
+      return 1;
+    }
+  } else {
     fclose(f);
     printf("%" PRIu32 "\n", l4(b));
-    return 0;
   }
-  printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
-  if(S(f, -4, SEEK_CUR) || !fwrite(l4o(t, (uint8_t[4]){0}), 4, 1, f)) {
-    perror("ERROR writing new timestamp");
-    fclose(f);
-    return 1;
-  }
-  if(fclose(f)) {
-    perror("ERROR writing new timestamp");
-    return 1;
-  }
-  return 0;
 }
