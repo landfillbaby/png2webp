@@ -34,7 +34,7 @@ no setjmp/longjmp ??
 use custom struct with png_create_(read|write)_struct and png_get_error_ptr
 
 LOSSYISERROR variant: work with RIFFxxxxWEBPVP8Lyyyy/ directly.
-x > y && (x == y + 12 || (y % 2 && x == y + 13))
+x > y && (x == y + 12 || (!(x % 2) && y % 2 && x == y + 13))
 
 try to make close+unlink atomic, like a delete on close flag: FIO01-C
 windows: FILE_DISPOSITION_INFO or ReOpenFile+FILE_FLAG_DELETE_ON_CLOSE
@@ -51,6 +51,8 @@ rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
 
 negative cli flags?
+
+webpwrite DOFLUSH?
 
 look into other PNG interfaces, maybe make a simple custom one
 libspng or lodepng? miniz or zlib-ng too?
