@@ -4,7 +4,7 @@
 #include "p2wconf.h"
 #endif
 #ifndef VERSION
-#define VERSION "v1.2.1"
+#define VERSION "v1.2.2"
 #endif
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
