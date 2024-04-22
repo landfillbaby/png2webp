@@ -16,7 +16,7 @@
 #elif LONG_MAX > 0xfffffffe
 #define S fseek
 #else
-struct static_assert_old {
+struct exestamp_static_assert {
   int off_t_too_small: (off_t)0xffffffff < 0xffffffffll ? -1 : 1;
 };
 #define S fseeko
@@ -29,33 +29,16 @@ STAMP: new Unix timestamp,\n\
       stderr);
   return -1;
 }
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4701)
-#elif defined __GNUC__ && !defined __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
 int main(int argc, char **argv) {
-  uint32_t t;
-#ifdef _MSC_VER
-#pragma warning(pop)
-#elif defined __GNUC__ && !defined __clang__
-#pragma GCC diagnostic pop
-#endif
-  bool w;
-  switch(argc) {
-    case 2: w = 0; break;
-    case 3:
-      if(isspace(*argv[2])) return help();
-      char *n;
-      t = (uint32_t)strtoll(argv[2], &n, 0);
-      if(*n || errno) return help();
-      w = 1;
-      break;
-    default: return help();
-  }
-  FILE *f = fopen(argv[1], w ? "rb+" : "rb");
+  uint32_t t; // uninitialized warnings are false :)
+  const bool w = argc == 3;
+  if(w) {
+    if(!*argv[2] || isspace(*argv[2])) return help();
+    char *n;
+    t = (uint32_t)strtoll(argv[2], &n, 0);
+    if(*n || errno) return help();
+  } else if(argc != 2) return help();
+  FILE *const f = fopen(argv[1], w ? "rb+" : "rb");
   if(!f) {
     perror("ERROR opening file");
     return 1;
@@ -71,14 +54,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   if(w) {
-#ifdef __clang__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconditional-uninitialized"
-#endif
     printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
-#ifdef __clang__
-#pragma GCC diagnostic pop
-#endif
 #define T(x) ((t >> x) & 255)
     if(S(f, -4, SEEK_CUR)
 	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
@@ -94,5 +70,4 @@ int main(int argc, char **argv) {
     fclose(f);
     printf("%" PRIu32 "\n", B);
   }
-  return 0;
 }
