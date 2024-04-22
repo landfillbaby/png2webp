@@ -10,7 +10,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0 # 1 if using alternate method
+        fetch-depth: 0
         token: ${{secrets.PUSH_TOKEN}}
     - name: Import GPG key
       uses: crazy-max/ghaction-import-gpg@v6
@@ -22,32 +22,22 @@ jobs:
       run: |
         if git commit -S -am"Update submodules (automated)
 
-        $(git submodule -q foreach 'tag="$(
+        $(git submodule -q foreach '
 
-            # tag closest behind origin/HEAD
-            git describe --tags --abbrev=0 origin/HEAD
+          # tag closest behind origin/HEAD
+          tag="$(git describe --tags --abbrev=0 origin/HEAD)"
 
-            # alternate method 1: latest release
-            # gh api repos/{owner}/{repo}/releases/latest -q .tag_name
+          # alternate method 1: latest release
+          # tag="$(gh api repos/{owner}/{repo}/releases/latest -q .tag_name)"
 
-            # alternate method 2: newest tag by date:
-            # gh api graphql -F owner="{owner}" -F name="{repo}" -f query="
-            #   query(\$name: String!, \$owner: String!) {
-            #     repository(owner: \$owner, name: \$name) {
-            #       refs(
-            #         refPrefix: \"refs/tags/\",
-            #         first: 1,
-            #         orderBy: { field: TAG_COMMIT_DATE, direction: DESC }
-            #       ) { edges { node { name } } }
-            #     }
-            #   }" -q ".data.repository.refs.edges[].node.name"
+          # alternate method 2: newest tag by date:
+          # tag="$(git tag --sort=-creatordate | head -n1)"
 
-          )"
-          if [ "$(git describe --tags)" != "$tag" ]; then
-            # if using alternate method:
-            # git fetch -q --depth 1 origin tag -- "$tag"
+          cur="$(git describe --tags)"
+          if [ "$cur" != "$tag" ] && printf "%s\n%s" "$cur" "$tag" | sort -VC
+          then
             git switch -dq -- "$tag"
-            printf "%s\n" "$name $tag"
+            printf "%s\n" "$name: $cur -> $tag"
           fi'
         )"; then
           git show --raw
