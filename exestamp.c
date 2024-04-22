@@ -30,8 +30,9 @@ STAMP: new Unix timestamp,\n\
   return -1;
 }
 int main(int argc, char **argv) {
-  uint32_t t; // uninitialized warnings are false :)
+  if(pun_h_check()) return 1;
   const bool w = argc == 3;
+  uint32_t b, t; // uninitialized warnings are false :)
   if(w) {
     if(!*argv[2] || isspace(*argv[2])) return help();
     char *n;
@@ -43,21 +44,18 @@ int main(int argc, char **argv) {
     perror("ERROR opening file");
     return 1;
   }
-  uint8_t b[4];
-#define B (uint32_t)(*b | (b[1] << 8) | (b[2] << 16) | (b[3] << 24))
-#define R(x) !fread(b, x, 1, f)
-  if(R(2) || u2(b) != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
-      || S(f, B, SEEK_SET) || R(4) || u4(b) != u4("PE\0") || S(f, 4, SEEK_CUR)
+#define R(x) !fread(&b, x, 1, f)
+  if(R(2) || (uint16_t)b != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
+      || S(f, l4(b), SEEK_SET) || R(4) || b != u4("PE\0") || S(f, 4, SEEK_CUR)
       || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
     return 1;
   }
   if(w) {
-    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", B, t);
-#define T(x) ((t >> x) & 255)
-    if(S(f, -4, SEEK_CUR)
-	|| !fwrite((uint8_t[]){T(0), T(8), T(16), T(24)}, 4, 1, f)) {
+    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
+    t = l4(t);
+    if(S(f, -4, SEEK_CUR) || !fwrite(&t, 4, 1, f)) {
       perror("ERROR writing new timestamp");
       fclose(f);
       return 1;
@@ -68,6 +66,6 @@ int main(int argc, char **argv) {
     }
   } else {
     fclose(f);
-    printf("%" PRIu32 "\n", B);
+    printf("%" PRIu32 "\n", l4(b));
   }
 }

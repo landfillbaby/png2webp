@@ -215,12 +215,12 @@ static bool p2w(char *ip, char *op) {
   E(expand);
   E(gray_to_rgb);
   E(packing);
-  if(*(uint8_t *)&(uint16_t){1}) {
-    E(bgr);
-    S(add_alpha, 255, PNG_FILLER_AFTER);
-  } else { // TODO: see big-endian below
+  if(isbe()) { // TODO: test big-endian
     E(swap_alpha);
     S(add_alpha, 255, PNG_FILLER_BEFORE);
+  } else {
+    E(bgr);
+    S(add_alpha, 255, PNG_FILLER_AFTER);
   }
   unsigned passes = (unsigned)E(interlace_handling);
   png_read_update_info(p, n);
@@ -306,7 +306,7 @@ static bool w2p(char *ip, char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
-  uint8_t i[12];
+  uint32_t i[3];
   char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
@@ -316,13 +316,12 @@ static bool w2p(char *ip, char *op) {
     fclose(fp);
     return 1;
   }
-  if(u4(i) != u4("RIFF") || u4(i + 8) != u4("WEBP")) {
+  if(*i != u4("RIFF") || i[2] != u4("WEBP")) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
     return 1;
   }
-  // RIFF header size
-  uint32_t l = (uint32_t)(i[4] | (i[5] << 8) | (i[6] << 16) | (i[7] << 24)) + 8;
+  uint32_t l = l4(i[1]) + 8; // RIFF header size
   if(l < 28 || l > 0xfffffffe) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
@@ -468,15 +467,8 @@ static bool w2p(char *ip, char *op) {
 }
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
-  { // should optimize out
-    uint32_t endian = u4("\xAA\xBB\xCC\xDD");
-    if(endian == 0xAABBCCDD)
-      P("Warning: %s", "Big-endian support is untested"); // TODO
-    else if(endian != 0xDDCCBBAA) {
-      P("ERROR: 32-bit mixed-endianness (%" PRIX32 ") not supported", endian);
-      return 1;
-    }
-  }
+  if(pun_h_check()) return 1;
+  if(isbe()) P("Warning: %s", "Big-endian support is untested"); // TODO
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
   for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
