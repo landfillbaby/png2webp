@@ -190,7 +190,9 @@ static bool p2w(char *ip, char *op) {
     return 1;
   }
   pnglen = 0;
-  png_set_read_fn(p, fp, pngread);
+#define E(x) png_set_##x(p)
+#define S(x, ...) png_set_##x(p, __VA_ARGS__)
+  S(read_fn, fp, pngread);
   png_read_info(p, n);
   uint32_t width, height;
   int bitdepth, colortype;
@@ -207,21 +209,20 @@ static bool p2w(char *ip, char *op) {
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
       P("Warning: Nonstandard gamma: %.5g", (uint32_t)gamma / 1e5);
-    png_set_gamma_fixed(p, 22e4, gamma);
+    S(gamma_fixed, 22e4, gamma);
   }
-#define S(x) png_set_##x(p)
-  S(scale_16);
-  S(expand);
-  S(gray_to_rgb);
-  S(packing);
+  E(scale_16);
+  E(expand);
+  E(gray_to_rgb);
+  E(packing);
   if(*(uint8_t *)&(uint16_t){1}) {
-    S(bgr);
-    png_set_add_alpha(p, 255, PNG_FILLER_AFTER);
+    E(bgr);
+    S(add_alpha, 255, PNG_FILLER_AFTER);
   } else { // TODO: see big-endian below
-    S(swap_alpha);
-    png_set_add_alpha(p, 255, PNG_FILLER_BEFORE);
+    E(swap_alpha);
+    S(add_alpha, 255, PNG_FILLER_BEFORE);
   }
-  unsigned passes = (unsigned)S(interlace_handling);
+  unsigned passes = (unsigned)E(interlace_handling);
   png_read_update_info(p, n);
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
@@ -443,11 +444,11 @@ static bool w2p(char *ip, char *op) {
     return 1;
   }
   pnglen = 0;
-  png_set_write_fn(p, fp, pngwrite, pngflush);
-  png_set_filter(p, 0, PNG_ALL_FILTERS);
-  png_set_compression_level(p, 9);
-  // png_set_compression_memlevel(p, 9);
-  png_set_IHDR(p, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
+  S(write_fn, fp, pngwrite, pngflush);
+  S(filter, 0, PNG_ALL_FILTERS);
+  S(compression_level, 9);
+  // S(compression_memlevel, 9);
+  S(IHDR, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
   png_write_info(p, n);
   uint8_t *w = b;
   for(unsigned y = H; y; y--) {
