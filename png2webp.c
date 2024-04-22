@@ -6,7 +6,9 @@
 #ifndef VERSION
 #define VERSION "v1.2.1"
 #endif
+#ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
+#endif
 #include "pun.h"
 #include <inttypes.h>
 #include <setjmp.h>
@@ -18,7 +20,9 @@
 #error "size_t isn't at least 32-bit"
 #endif
 #ifdef _WIN32
+#ifndef _CRT_NONSTDC_NO_WARNINGS
 #define _CRT_NONSTDC_NO_WARNINGS
+#endif
 #include <fcntl.h>
 #include <io.h>
 #else
