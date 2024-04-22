@@ -44,8 +44,7 @@ LDFLAGS ?= -s $(useld) -Wl,--as-needed,--gc-sections
 exestampexec := ./exestamp.py
 endif
 png2webp: CFLAGS += $(PTHREAD_CFLAGS)
-png2webp png2webp_dynamic: \
-	CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
+png2webp png2webp_dynamic: CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	-DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF $(CPPFLAGS)
 png2webp: LDLIBS := $(PTHREAD_LIBS) $(LDLIBS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
@@ -125,7 +124,7 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/utils/color_cache_utils.c \
 	libwebp/src/utils/filters_utils.c \
 	libwebp/src/utils/huffman_encode_utils.c \
-	libwebp/src/utils/huffman_utils.c \
+	libwebp/src/utils/huffman_utils.c libwebp/src/utils/palette.c \
 	libwebp/src/utils/quant_levels_dec_utils.c \
 	libwebp/src/utils/quant_levels_utils.c \
 	libwebp/src/utils/random_utils.c libwebp/src/utils/rescaler_utils.c \
