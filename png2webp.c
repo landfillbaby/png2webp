@@ -523,7 +523,8 @@ int main(int sargc, char **argv) {
 #ifdef NOVLA
       char *op = malloc(len + 5);
       if(!op) {
-	P("ERROR adding %s extension to %s: Out of memory", ".png", *argv);
+	P("ERROR adding %s extension to %s: %s", ".png", *argv,
+	    "Out of memory");
 	return 1;
       }
 #elif defined __GNUC__
@@ -549,7 +550,8 @@ int main(int sargc, char **argv) {
 #ifdef NOVLA
       char *op = malloc(len + 6);
       if(!op) {
-	P("ERROR adding %s extension to %s: Out of memory", ".webp", *argv);
+	P("ERROR adding %s extension to %s: %s", ".webp", *argv,
+	    "Out of memory");
 	return 1;
       }
 #elif defined __GNUC__
