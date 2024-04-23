@@ -4,9 +4,9 @@
 // vi: sw=2 tw=80
 #ifndef PUN_H
 #define PUN_H
-#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #if CHAR_BIT != 8
@@ -63,11 +63,6 @@ static inline bool pun_h_check(void) {
   return 0;
 }
 static inline bool isbe(void) { return u2("\1") != 1; }
-#ifdef __GNUC__
-#define s2 __builtin_bswap16
-#define s4 __builtin_bswap32
-#define s8 __builtin_bswap64
-#else
 static inline uint16_t s2(const uint16_t x) {
   return (uint16_t)((x >> 8) | (x << 8));
 }
@@ -80,7 +75,6 @@ static inline uint64_t s8(const uint64_t x) {
       | ((x >> 8) & 0xff000000) | ((x & 0xff000000) << 8)
       | ((x & 0xff0000) << 24) | ((x & 0xff00) << 40) | (x << 56));
 }
-#endif
 static inline uint16_t b2(const uint16_t x) { return isbe() ? x : s2(x); }
 static inline uint32_t b4(const uint32_t x) { return isbe() ? x : s4(x); }
 static inline uint64_t b8(const uint64_t x) { return isbe() ? x : s8(x); }
