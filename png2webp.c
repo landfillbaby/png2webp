@@ -535,8 +535,8 @@ int main(int sargc, char **argv) {
 #else
       char op[len + 5];
 #endif
-      memcpy(op, *argv, len); // the only real memcpy
       memcpy(op + len, ".png", 5);
+      memcpy(op, *argv, len); // the only real memcpy
       ret = w2p(*argv, op) || ret;
 #ifdef NOVLA
       free(op);
@@ -562,8 +562,8 @@ int main(int sargc, char **argv) {
 #else
       char op[len + 6];
 #endif
-      memcpy(op, *argv, len); // the only real memcpy
       memcpy(op + len, ".webp", 6);
+      memcpy(op, *argv, len); // the only real memcpy
       ret = p2w(*argv, op) || ret;
 #ifdef NOVLA
       free(op);
