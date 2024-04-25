@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 #define R(x) !fread(&b, x, 1, f)
-  if(R(2) || (uint16_t)b != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
+  if(R(2) || u2(&b) != u2("MZ") || S(f, 60, SEEK_SET) || R(4)
       || S(f, l4(b), SEEK_SET) || R(4) || b != u4("PE\0") || S(f, 4, SEEK_CUR)
       || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
