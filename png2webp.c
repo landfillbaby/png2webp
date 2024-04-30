@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if SIZE_MAX < 0xffffffff
+#if SIZE_MAX < 0xffffffffu
 #error "size_t isn't at least 32-bit"
 #endif
 #ifdef _WIN32
@@ -28,14 +28,14 @@
 #else
 #include <unistd.h>
 #endif
-#if !defined NOFOPENX && __STDC_VERSION__ < 201112L
+#if !defined NOFOPENX && __STDC_VERSION__ < 201112
 #define NOFOPENX
 #endif
 #ifdef NOFOPENX
 #include <fcntl.h>
 #include <sys/stat.h>
 #ifndef O_BINARY
-#define O_BINARY 0
+#define O_BINARY 0u
 #endif
 #endif
 #include "png.h"
@@ -121,11 +121,11 @@ static FILE *openw(char *op) {
 }
 static size_t pnglen;
 static void pngread(png_struct *p, uint8_t *d, size_t s) {
-  if(!fread(d, s, 1, png_get_io_ptr(p))) png_error(p, "I/O error");
+  if(!fread(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
 }
 static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
-  if(!fwrite(d, s, 1, png_get_io_ptr(p))) png_error(p, "I/O error");
+  if(!fwrite(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
 }
 static void pngflush(png_struct *p) {
@@ -148,13 +148,14 @@ static void pngwarn(png_struct *p, const char *s) {
   P("Warning: %s", s);
 }
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
-  return (int)fwrite(d, s, 1, p->custom_ptr);
+  return (int)fwrite(d, s, 1u, p->custom_ptr);
 }
 static int progress(int percent, const WebPPicture *x) {
   (void)x;
   char h[64];
-  memset(h, '#', 64);
-  fprintf(stderr, "\r[%-64.*s] %u%%", (unsigned)percent * 16 / 25, h, percent);
+  memset(h, '#', 64u);
+  fprintf(
+      stderr, "\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, percent);
   return 1;
 }
 static bool p2w(char *ip, char *op) {
@@ -197,19 +198,19 @@ static bool p2w(char *ip, char *op) {
   uint32_t width, height;
   int bitdepth, colortype;
   png_get_IHDR(p, n, &width, &height, &bitdepth, &colortype, 0, 0, 0);
-  if(width > 16383 || height > 16383) {
+  if(width > 16383u || height > 16383u) {
     P("ERROR reading: Image too big (%" PRIu32 " x %" PRIu32
       ", max. 16383 x 16383 px)",
 	width, height);
     goto p2w_close;
   }
-  if((unsigned)bitdepth > 8) P("Warning: %s", "Downsampling to 8-bit");
+  if((unsigned)bitdepth > 8u) P("Warning: %s", "Downsampling to 8-bit");
   bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
   int32_t gamma = 45455;
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
       P("Warning: Nonstandard gamma: %.5g", (uint32_t)gamma / 1e5);
-    S(gamma_fixed, 22e4, gamma);
+    S(gamma_fixed, 220000, gamma);
   }
   E(scale_16);
   E(expand);
@@ -217,22 +218,22 @@ static bool p2w(char *ip, char *op) {
   E(packing);
   if(isbe()) { // TODO: test big-endian
     E(swap_alpha);
-    S(add_alpha, 255, PNG_FILLER_BEFORE);
+    S(add_alpha, 255u, PNG_FILLER_BEFORE);
   } else {
     E(bgr);
-    S(add_alpha, 255, PNG_FILLER_AFTER);
+    S(add_alpha, 255u, PNG_FILLER_AFTER);
   }
   unsigned passes = (unsigned)E(interlace_handling);
   png_read_update_info(p, n);
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
-  if(rowbytes != (size_t)4 * width) {
+  if(rowbytes != width * (size_t)4u) {
     P("ERROR reading: rowbytes is %zu, should be %zu", rowbytes,
-	(size_t)4 * width);
+	width * (size_t)4u);
     goto p2w_close;
   }
 #endif
-  b = malloc(width * height * 4);
+  b = malloc(width * height * (size_t)4u);
   if(!b) {
     P("ERROR reading: %s", *k);
     goto p2w_close;
@@ -241,7 +242,7 @@ static bool p2w(char *ip, char *op) {
     uint8_t *w = (uint8_t *)b;
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
-      w += width * 4;
+      w += width * (size_t)4u;
     }
   }
   png_read_end(p, 0);
@@ -251,11 +252,11 @@ static bool p2w(char *ip, char *op) {
       "???", "RGBA"};
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s",
-      width, height, pnglen, (double)pnglen * 8 / (width * height), bitdepth,
+      width, height, pnglen, (double)pnglen * 8u / (width * height), bitdepth,
       f[(unsigned)colortype], trns ? ", with transparency" : "",
-      passes > 1 ? ", interlaced" : "");
+      passes > 1u ? ", interlaced" : "");
   WebPConfig c;
-  if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100)) {
+  if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100u)) {
     P("ERROR writing: %s", k[3]);
     goto p2w_free;
   }
@@ -276,7 +277,7 @@ static bool p2w(char *ip, char *op) {
   int r = WebPEncode(&c, &o);
   if(doprogress) fputc('\n', stderr);
   if(!r) {
-    P("ERROR writing: %s", k[o.error_code - 1]);
+    P("ERROR writing: %s", k[o.error_code - 1u]);
     fclose(fp);
   p2w_rm:
     if(op) unlink(op);
@@ -297,9 +298,9 @@ Lossless features:%s%s%s%s\nColors: %s%u",
       (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
       s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
       s.histogram_bits, s.transform_bits, s.cache_bits,
-      F ? F & 1 ? " prediction" : "" : " none",
-      F && F & 2 ? " cross-color" : "", F && F & 4 ? " subtract-green" : "",
-      F && F & 8 ? " palette" : "", C ? "" : ">", C ? C : 256);
+      F ? F & 1u ? " prediction" : "" : " none",
+      F && F & 2u ? " cross-color" : "", F && F & 4u ? " subtract-green" : "",
+      F && F & 8u ? " palette" : "", C ? "" : ">", C ? (unsigned)C : 256u);
   return 0;
 }
 static bool w2p(char *ip, char *op) {
@@ -310,8 +311,8 @@ static bool w2p(char *ip, char *op) {
   char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
-#define R(x, y) !fread(x, y, 1, fp)
-  if(R(i, 12)) {
+#define R(x, y) !fread(x, y, 1u, fp)
+  if(R(i, 12u)) {
     P("ERROR reading: %s", k[6]);
     fclose(fp);
     return 1;
@@ -321,8 +322,8 @@ static bool w2p(char *ip, char *op) {
     fclose(fp);
     return 1;
   }
-  uint32_t l = l4(i[1]) + 8; // RIFF header size
-  if(l < 28 || l > 0xfffffffe) {
+  uint32_t l = l4(i[1]) + 8u; // RIFF header size
+  if(l < 28u || l > 0xfffffffeu) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
     return 1;
@@ -333,14 +334,15 @@ static bool w2p(char *ip, char *op) {
     fclose(fp);
     return 1;
   }
-  memcpy(x, i, 12); // should optimize out
+  memcpy(x, i, 12u); // should optimize out
   if(
 #if defined __ANDROID__ && __ANDROID_API__ < 34
-      l - 12 > 0x7fffffff // https://issuetracker.google.com/240139009
-	  ? R(x + 12, 0x7fffffff) || R(x + 12 + 0x7fffffff, l - 12 - 0x7fffffff)
+      l > 0x8000000bu // https://issuetracker.google.com/240139009
+	  ? R(x + 12u, (size_t)0x7fffffffu)
+	      || R(x + 0x8000000bu, l - (size_t)0x8000000bu)
 	  :
 #endif
-	  R(x + 12, l - 12)) {
+	  R(x + 12u, l - (size_t)12u)) {
     P("ERROR reading: %s", k[6]);
     fclose(fp);
     free(x);
@@ -355,7 +357,7 @@ static bool w2p(char *ip, char *op) {
 #endif
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
   if(r) {
-    P("ERROR reading: %s", k[r - 1]);
+    P("ERROR reading: %s", k[r - 1u]);
     free(x);
     return 1;
   }
@@ -380,13 +382,13 @@ static bool w2p(char *ip, char *op) {
     return 1;
   }
 #ifdef LOSSYISERROR
-  if(V != 2) {
+  if(V != 2u) {
     P("ERROR reading: %s", "Unsupported feature: lossy compression");
     free(x);
     return 1;
   }
 #endif
-#define B ((unsigned)(3 + A))
+#define B (3u + (unsigned)A) // assume 0 or 1
   uint8_t *b = malloc(W * H * B);
   if(!b) {
     P("ERROR reading: %s", *k);
@@ -410,7 +412,7 @@ static bool w2p(char *ip, char *op) {
   D.size = W * H * B;
   r = WebPDecode(x, l, &c);
   if(r) {
-    P("ERROR reading: %s", k[r - 1]);
+    P("ERROR reading: %s", k[r - 1u]);
     free(b);
     free(x);
     return 1;
@@ -442,7 +444,7 @@ static bool w2p(char *ip, char *op) {
     free(b);
     return 1;
   }
-  pnglen = 0;
+  pnglen = 0u;
   S(write_fn, fp, pngwrite, pngflush);
   S(filter, 0, PNG_ALL_FILTERS);
   S(compression_level, 9);
@@ -462,7 +464,7 @@ static bool w2p(char *ip, char *op) {
   png_destroy_write_struct(&p, &n);
   free(b);
   PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s", pnglen,
-      (double)pnglen * 8 / (W * H), A ? "RGBA" : "RGB");
+      (double)pnglen * 8u / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
 int main(int sargc, char **argv) {
@@ -499,8 +501,8 @@ int main(int sargc, char **argv) {
 #endif
 #define PIPEARG(x) (argc <= x || (*argv[x] == '-' && !argv[x][1]))
   if(pipe) {
-    if(argc > 2 || ((usestdin = PIPEARG(0)) && isatty(0))
-	|| ((usestdout = PIPEARG(1)) && isatty(1)))
+    if(argc > 2u || ((usestdin = PIPEARG(0u)) && isatty(0))
+	|| ((usestdout = PIPEARG(1u)) && isatty(1)))
       return help();
 #ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
@@ -514,14 +516,14 @@ int main(int sargc, char **argv) {
   if(reverse)
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 4 && argv[0][len - 5] == '.'
-	  && (u4(*argv + len - 4) | u4("    ")) == u4("webp"))
-	len -= 5;
+      if(len > 4u && argv[0][len - 5u] == '.'
+	  && (u4(*argv + len - 4u) | u4("    ")) == u4("webp"))
+	len -= 5u;
 #if defined __STDC_NO_VLA__ && !defined NOVLA
 #define NOVLA
 #endif
 #ifdef NOVLA
-      char *op = malloc(len + 5);
+      char *op = malloc(len + 5u);
       if(!op) {
 	P("ERROR adding %s extension to %s: %s", ".png", *argv,
 	    "Out of memory");
@@ -530,12 +532,12 @@ int main(int sargc, char **argv) {
 #elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
-      char op[len + 5];
+      char op[len + 5u];
 #pragma GCC diagnostic pop
 #else
-      char op[len + 5];
+      char op[len + 5u];
 #endif
-      memcpy(op + len, ".png", 5);
+      memcpy(op + len, ".png", 5u);
       memcpy(op, *argv, len); // the only real memcpy
       ret = w2p(*argv, op) || ret;
 #ifdef NOVLA
@@ -546,9 +548,10 @@ int main(int sargc, char **argv) {
     if(!doprogress) doprogress = isatty(2);
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 3 && (u4(*argv + len - 4) | u4("\0   ")) == u4(".png")) len -= 4;
+      if(len > 3u && (u4(*argv + len - 4u) | u4("\0   ")) == u4(".png"))
+	len -= 4u;
 #ifdef NOVLA
-      char *op = malloc(len + 6);
+      char *op = malloc(len + 6u);
       if(!op) {
 	P("ERROR adding %s extension to %s: %s", ".webp", *argv,
 	    "Out of memory");
@@ -557,12 +560,12 @@ int main(int sargc, char **argv) {
 #elif defined __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvla"
-      char op[len + 6];
+      char op[len + 6u];
 #pragma GCC diagnostic pop
 #else
-      char op[len + 6];
+      char op[len + 6u];
 #endif
-      memcpy(op + len, ".webp", 6);
+      memcpy(op + len, ".webp", 6u);
       memcpy(op, *argv, len); // the only real memcpy
       ret = p2w(*argv, op) || ret;
 #ifdef NOVLA

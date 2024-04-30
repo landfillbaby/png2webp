@@ -54,7 +54,7 @@ static inline uint64_t u8(const void *const x) {
   return r;
 }
 static inline bool pun_h_check(void) {
-  const uint64_t x = 0x3132333435363738;
+  const uint64_t x = 0x3132333435363738u;
   if(x != u8("12345678") && x != u8("87654321")) {
     fprintf(stderr, "ERROR: 64-bit mixed-endianness (%.8s) not supported\n",
 	(const char *)&x);
@@ -67,13 +67,13 @@ static inline uint16_t s2(const uint16_t x) {
   return (uint16_t)((x >> 8) | (x << 8));
 }
 static inline uint32_t s4(const uint32_t x) {
-  return (uint32_t)((x >> 24) | ((x >> 8) & 0xff00) | ((x & 0xff00) << 8)
+  return (uint32_t)((x >> 24) | ((x >> 8) & 0xff00u) | ((x & 0xff00u) << 8)
       | (x << 24));
 }
 static inline uint64_t s8(const uint64_t x) {
-  return (uint64_t)((x >> 56) | ((x >> 40) & 0xff00) | ((x >> 24) & 0xff0000)
-      | ((x >> 8) & 0xff000000) | ((x & 0xff000000) << 8)
-      | ((x & 0xff0000) << 24) | ((x & 0xff00) << 40) | (x << 56));
+  return (uint64_t)((x >> 56) | ((x >> 40) & 0xff00u) | ((x >> 24) & 0xff0000u)
+      | ((x >> 8) & 0xff000000u) | ((x & 0xff000000u) << 8)
+      | ((x & 0xff0000u) << 24) | ((x & 0xff00u) << 40) | (x << 56));
 }
 static inline uint16_t b2(const uint16_t x) { return isbe() ? x : s2(x); }
 static inline uint32_t b4(const uint32_t x) { return isbe() ? x : s4(x); }

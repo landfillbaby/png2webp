@@ -17,7 +17,7 @@
 #define S fseek
 #else
 struct exestamp_static_assert {
-  int off_t_too_small: (off_t)0xffffffff < 0xffffffffll ? -1 : 1;
+  int off_t_too_small: ((off_t)0xffffffff) < 0xffffffff ? -1 : 1;
 };
 #define S fseeko
 #endif
