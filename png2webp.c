@@ -1,4 +1,3 @@
-// anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
 #ifdef P2WCONF
 #include "p2wconf.h"

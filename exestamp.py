@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# anti-copyright Lucy Phipps 2023
 if __name__ == '__main__':
     from argparse import ArgumentParser as f
     from struct import Struct as p

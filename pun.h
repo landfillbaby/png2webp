@@ -1,4 +1,3 @@
-// anti-copyright Lucy Phipps 2022
 // mixed-endian not supported. if you use [bl]* functions put this at the top:
 // if(pun_h_check()) exit(1);
 // vi: sw=2 tw=80

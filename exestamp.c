@@ -1,4 +1,3 @@
-// anti-copyright Lucy Phipps 2022
 // vi: sw=2 tw=80
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
