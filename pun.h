@@ -3,6 +3,12 @@
 // vi: sw=2 tw=80
 #ifndef PUN_H
 #define PUN_H
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809
+#endif
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -62,18 +68,15 @@ static inline bool pun_h_check(void) {
   return 0;
 }
 static inline bool isbe(void) { return u2("\1") != 1; }
-static inline uint16_t s2(const uint16_t x) {
-  return (uint16_t)((x >> 8) | (x << 8));
-}
+#define S(y, z) ((((x >> y) & 255) << z) | (((x >> z) & 255) << y))
+static inline uint16_t s2(const uint16_t x) { return (uint16_t)(S(0, 8)); }
 static inline uint32_t s4(const uint32_t x) {
-  return (uint32_t)((x >> 24) | ((x >> 8) & 0xff00u) | ((x & 0xff00u) << 8)
-      | (x << 24));
+  return (uint32_t)(S(0, 24) | S(8, 16));
 }
 static inline uint64_t s8(const uint64_t x) {
-  return (uint64_t)((x >> 56) | ((x >> 40) & 0xff00u) | ((x >> 24) & 0xff0000u)
-      | ((x >> 8) & 0xff000000u) | ((x & 0xff000000u) << 8)
-      | ((x & 0xff0000u) << 24) | ((x & 0xff00u) << 40) | (x << 56));
+  return (uint64_t)(S(0, 56) | S(8, 48) | S(16, 40) | S(24, 32));
 }
+#undef S
 static inline uint16_t b2(const uint16_t x) { return isbe() ? x : s2(x); }
 static inline uint32_t b4(const uint32_t x) { return isbe() ? x : s4(x); }
 static inline uint64_t b8(const uint64_t x) { return isbe() ? x : s8(x); }

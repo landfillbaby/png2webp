@@ -5,9 +5,6 @@
 #ifndef VERSION
 #define VERSION "v1.2.2"
 #endif
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
 #include "pun.h"
 #include <inttypes.h>
 #include <setjmp.h>
@@ -24,8 +21,10 @@
 #endif
 #include <fcntl.h>
 #include <io.h>
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #else
 #include <unistd.h>
+#define eprintf(...) dprintf(2, __VA_ARGS__)
 #endif
 #if !defined NOFOPENX && __STDC_VERSION__ < 201112
 #define NOFOPENX
@@ -34,7 +33,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #ifndef O_BINARY
-#define O_BINARY 0u
+#define O_BINARY 0
 #endif
 #endif
 #include "png.h"
@@ -62,7 +61,7 @@ png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
   return -1;
 }
 static bool exact, force, verbose, doprogress;
-#define P(x, ...) fprintf(stderr, x "\n", __VA_ARGS__)
+#define P(x, ...) eprintf(x "\n", __VA_ARGS__)
 #define PV(...) (verbose ? P(__VA_ARGS__) : 0)
 #define IP (ip ? ip : "<stdin>")
 #define OP (op ? op : "<stdout>")
@@ -129,7 +128,7 @@ static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
 }
 static void pngflush(png_struct *p) {
 #ifdef DOFLUSH
-  fflush(png_get_io_ptr(p));
+  if(fflush(png_get_io_ptr(p))) png_error(p, "I/O error");
 #else
   (void)p;
 #endif
@@ -153,8 +152,7 @@ static int progress(int percent, const WebPPicture *x) {
   (void)x;
   char h[64];
   memset(h, '#', 64u);
-  fprintf(
-      stderr, "\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, percent);
+  eprintf("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, percent);
   return 1;
 }
 static bool p2w(char *ip, char *op) {
@@ -271,11 +269,11 @@ static bool p2w(char *ip, char *op) {
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
       .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
-  if(doprogress) fprintf(stderr, "[%-64.*s] %u%%", 0, "", 0);
+  if(doprogress) eprintf("[%-64.*s] %u%%", 0, "", 0);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
-  if(doprogress) fputc('\n', stderr);
+  if(doprogress) fputs("\n", stderr);
   if(!r) {
     P("ERROR writing: %s", k[o.error_code - 1u]);
     fclose(fp);
@@ -295,7 +293,7 @@ Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
       s.lossless_size,
-      (unsigned)s.lossless_size * 8. / (uint32_t)(o.width * o.height),
+      (double)(unsigned)s.lossless_size * 8u / (uint32_t)(o.width * o.height),
       s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
       s.histogram_bits, s.transform_bits, s.cache_bits,
       F ? F & 1u ? " prediction" : "" : " none",
@@ -375,7 +373,7 @@ static bool w2p(char *ip, char *op) {
 #endif
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
      " bytes (%.15g bpp)\nUses alpha: %s" FMTSTR,
-      W, H, l, l * 8. / (W * H), A ? "yes" : "no" FMTARG);
+      W, H, l, (double)l * 8u / (W * H), A ? "yes" : "no" FMTARG);
   if(I.has_animation) {
     P("ERROR reading: %s", "Unsupported feature: animation");
     free(x);

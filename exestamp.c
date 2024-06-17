@@ -1,13 +1,9 @@
 // vi: sw=2 tw=80
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
 #include "pun.h"
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef _WIN32
@@ -30,15 +26,14 @@ STAMP: new Unix timestamp,\n\
 }
 int main(int argc, char **argv) {
   if(pun_h_check()) return 1;
-  const bool w = argc == 3;
   uint32_t b, t; // uninitialized warnings are false :)
-  if(w) {
+  if(argc == 3) {
     if(!*argv[2] || isspace(*argv[2])) return help();
     char *n;
     t = (uint32_t)strtoll(argv[2], &n, 0);
     if(*n || errno) return help();
   } else if(argc != 2) return help();
-  FILE *const f = fopen(argv[1], w ? "rb+" : "rb");
+  FILE *const f = fopen(argv[1], argc == 3 ? "rb+" : "rb");
   if(!f) {
     perror("ERROR opening file");
     return 1;
@@ -51,7 +46,7 @@ int main(int argc, char **argv) {
     fclose(f);
     return 1;
   }
-  if(w) {
+  if(argc == 3) {
     printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", l4(b), t);
     t = l4(t);
     if(S(f, -4, SEEK_CUR) || !fwrite(&t, 4, 1, f)) {

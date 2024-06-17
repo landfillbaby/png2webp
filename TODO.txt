@@ -1,5 +1,23 @@
 see also the TODO comments in the files themselves
 
+flag to delete input files on success (-d?)
+
+flag to copy file times and attributes (-k?)
+windows: change FILE* to HANDLE
+	CreateFile[AW]
+	using W would mean wmain, wfprintf, etc, but no UTF-8 manifest
+	in/out: FILE_BASIC_INFO (timestamps + attributes (might need a mask?))
+	maybe other stuff like this gist:
+	https://gist.github.com/petrsnd/e94c6100c9f2c8c6df10
+	see how robocopy /copyall does it (how?)
+posix: change FILE* to int fd
+	in: fstat (+ something acl or xattr or selinux security context?)
+	out: futimens(&stat.st_atim), fchown, fchmod (ditto)
+	see how coreutils cp -p or -a does it
+others: who cares lol
+
+negative cli flags? capitalize?
+
 less gotos especially in p2w
 try to minimize null frees without making a bigger exe
 
@@ -49,8 +67,6 @@ or just write to dynamic memory buffer then try to write all at once
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
-
-negative cli flags?
 
 webpwrite DOFLUSH?
 
