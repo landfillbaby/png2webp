@@ -1,4 +1,10 @@
 // vi: sw=2 tw=80
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809
+#endif
 #ifdef P2WCONF
 #include "p2wconf.h"
 #endif
@@ -39,6 +45,10 @@
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
+#if(' ' == '\40' && '0' == '\60' && 'A' == '\101' && 'a' == '\141') \
+    || (' ' == '\100' && '0' == '\360' && 'A' == '\301' && 'a' == '\201')
+#define ASCII_OR_EBCDIC
+#endif
 static int help(void) {
   fputs("PNG2WebP " VERSION "\n\
 \n\
@@ -214,7 +224,7 @@ static bool p2w(char *ip, char *op) {
   E(expand);
   E(gray_to_rgb);
   E(packing);
-  if(isbe()) { // TODO: test big-endian
+  if(hl(1u) != 1u) { // TODO: test big-endian
     E(swap_alpha);
     S(add_alpha, 255u, PNG_FILLER_BEFORE);
   } else {
@@ -315,12 +325,12 @@ static bool w2p(char *ip, char *op) {
     fclose(fp);
     return 1;
   }
-  if(*i != u4("RIFF") || i[2] != u4("WEBP")) {
+  if(*i != hl(0x46464952u) || i[2] != hl(0x50424557u)) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
     return 1;
   }
-  uint32_t l = l4(i[1]) + 8u; // RIFF header size
+  uint32_t l = lh(i[1]) + 8u; // RIFF header size
   if(l < 28u || l > 0xfffffffeu) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
@@ -467,8 +477,15 @@ static bool w2p(char *ip, char *op) {
 }
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
-  if(pun_h_check()) return 1;
-  if(isbe()) P("Warning: %s", "Big-endian support is untested"); // TODO
+  {
+    const uint32_t x = lh(u4("4321"));
+    if(x == u4("1234"))
+      P("Warning: %s", "Big-endian support is untested"); // TODO
+    else if(x != u4("4321")) {
+      P("ERROR: system is mixed-endian (%.4s)", (const char *)&x);
+      return 1;
+    }
+  }
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
 #ifdef USEGETOPT
   for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
@@ -514,8 +531,15 @@ int main(int sargc, char **argv) {
   if(reverse)
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 4u && argv[0][len - 5u] == '.'
-	  && (u4(*argv + len - 4u) | u4("    ")) == u4("webp"))
+#define K(x, y) (argv[0][len - x] == y)
+      if(len > 4u && K(5u, '.') &&
+#ifdef ASCII_OR_EBCDIC
+	  (u4(*argv + len - 4u) | u4("    ")) == (u4("webp") | u4("    "))
+#else
+	  (K(4u, 'w') || K(4u, 'W')) && (K(3u, 'e') || K(3u, 'E'))
+	  && (K(2u, 'b') || K(4u, 'B')) && (K(1u, 'p') || K(4u, 'P'))
+#endif
+      )
 	len -= 5u;
 #if defined __STDC_NO_VLA__ && !defined NOVLA
 #define NOVLA
@@ -546,7 +570,14 @@ int main(int sargc, char **argv) {
     if(!doprogress) doprogress = isatty(2);
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
-      if(len > 3u && (u4(*argv + len - 4u) | u4("\0   ")) == u4(".png"))
+      if(len > 3u &&
+#ifdef ASCII_OR_EBCDIC
+	  (u4(*argv + len - 4u) | u4("\0   ")) == (u4(".png") | u4("\0   "))
+#else
+	  K(4u, '.') && (K(3u, 'p') || K(3u, 'P')) && (K(2u, 'n') || K(4u, 'N'))
+	  && (K(1u, 'g') || K(4u, 'G'))
+#endif
+      )
 	len -= 4u;
 #ifdef NOVLA
       char *op = malloc(len + 6u);
