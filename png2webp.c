@@ -75,7 +75,7 @@ static bool exact, force, verbose, doprogress;
 #define PV(...) (verbose ? P(__VA_ARGS__) : 0)
 #define IP (ip ? ip : "<stdin>")
 #define OP (op ? op : "<stdout>")
-static FILE *openr(char *ip) {
+static FILE *openr(const char *ip) {
   if(!ip) return stdin;
   FILE *fp;
 #ifdef NOFOPENX
@@ -97,7 +97,7 @@ static FILE *openr(char *ip) {
 #endif
   return fp;
 }
-static FILE *openw(char *op) {
+static FILE *openw(const char *op) {
   if(verbose) fputs("Encoding ...\n", stderr);
   if(!op) return stdout;
   FILE *fp;
@@ -165,13 +165,13 @@ static int progress(int percent, const WebPPicture *x) {
   eprintf("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, percent);
   return 1;
 }
-static bool p2w(char *ip, char *op) {
+static bool p2w(const char *ip, const char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
   uint32_t *b = 0;
   png_info *n = 0;
-  char *k[] = {"Out of memory",
+  const char *k[] = {"Out of memory",
       "???", // oom flushing bitstream, unused in libwebp
       "???", // null param
       "Broken config, file a bug report",
@@ -256,7 +256,7 @@ static bool p2w(char *ip, char *op) {
   png_read_end(p, 0);
   fclose(fp);
   png_destroy_read_struct(&p, &n, 0);
-  char *f[] = {"grayscale", "???", "RGB", "paletted", "grayscale + alpha",
+  const char *f[] = {"grayscale", "???", "RGB", "paletted", "grayscale + alpha",
       "???", "RGBA"};
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s",
@@ -311,12 +311,12 @@ Lossless features:%s%s%s%s\nColors: %s%u",
       F && F & 8u ? " palette" : "", C ? "" : ">", C ? (unsigned)C : 256u);
   return 0;
 }
-static bool w2p(char *ip, char *op) {
+static bool w2p(const char *ip, const char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
   uint32_t i[3];
-  char *k[] = {"Out of memory", "Broken config, file a bug report",
+  const char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
 #define R(x, y) !fread(x, y, 1u, fp)
@@ -377,7 +377,7 @@ static bool w2p(char *ip, char *op) {
 #define FMTSTR
 #define FMTARG
 #else
-  char *f[] = {"undefined/mixed", "lossy", "lossless"};
+  const char *f[] = {"undefined/mixed", "lossy", "lossless"};
 #define FMTSTR "\nFormat: %s"
 #define FMTARG , f[V]
 #endif
