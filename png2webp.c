@@ -216,8 +216,8 @@ static bool p2w(const char *ip, const char *op) {
   int32_t gamma = 45455;
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
-      P("Warning: Nonstandard gamma: %u.%05u", (uint32_t)gamma / 100000u,
-	  (uint32_t)gamma % 100000u);
+      P("Warning: Nonstandard gamma: %" PRIu32 ".%05" PRIu32,
+	  (uint32_t)gamma / 100000u, (uint32_t)gamma % 100000u);
     S(gamma_fixed, 220000, gamma);
   }
   E(scale_16);
