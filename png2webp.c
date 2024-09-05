@@ -128,11 +128,11 @@ static FILE *openw(const char *op) {
   return fp;
 }
 static size_t pnglen;
-static void pngread(png_struct *p, uint8_t *d, size_t s) {
+static void pngread(png_struct *p, U *d, size_t s) {
   if(!fread(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
 }
-static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
+static void pngwrite(png_struct *p, U *d, size_t s) {
   if(!fwrite(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
 }
@@ -155,7 +155,7 @@ static void pngwarn(png_struct *p, const char *s) {
   (void)p;
   P("Warning: %s", s);
 }
-static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
+static int webpwrite(const U *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1u, p->custom_ptr);
 }
 static int progress(int percent, const WebPPicture *x) {
@@ -169,7 +169,7 @@ static bool p2w(const char *ip, const char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
-  uint32_t *b = 0;
+  U4 *b = 0;
   png_info *n = 0;
   const char *k[] = {"Out of memory",
       "???", // oom flushing bitstream, unused in libwebp
@@ -202,7 +202,7 @@ static bool p2w(const char *ip, const char *op) {
 #define S(x, ...) png_set_##x(p, __VA_ARGS__)
   S(read_fn, fp, pngread);
   png_read_info(p, n);
-  uint32_t width, height;
+  U4 width, height;
   int bitdepth, colortype;
   png_get_IHDR(p, n, &width, &height, &bitdepth, &colortype, 0, 0, 0);
   if(width > 16383u || height > 16383u) {
@@ -217,7 +217,7 @@ static bool p2w(const char *ip, const char *op) {
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
       P("Warning: Nonstandard gamma: %" PRIu32 ".%05" PRIu32,
-	  (uint32_t)gamma / 100000u, (uint32_t)gamma % 100000u);
+	  (U4)gamma / 100000u, (U4)gamma % 100000u);
     S(gamma_fixed, 220000, gamma);
   }
   E(scale_16);
@@ -247,7 +247,7 @@ static bool p2w(const char *ip, const char *op) {
     goto p2w_close;
   }
   for(unsigned x = passes; x; x--) {
-    uint8_t *w = (uint8_t *)b;
+    U *w = (U *)b;
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
       w += width * (size_t)4u;
@@ -303,7 +303,7 @@ Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
       s.lossless_size,
-      (double)(unsigned)s.lossless_size * 8u / (uint32_t)(o.width * o.height),
+      (double)(unsigned)s.lossless_size * 8u / (U4)(o.width * o.height),
       s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
       s.histogram_bits, s.transform_bits, s.cache_bits,
       F ? F & 1u ? " prediction" : "" : " none",
@@ -315,7 +315,7 @@ static bool w2p(const char *ip, const char *op) {
   P("%s -> %s ...", IP, OP);
   FILE *fp = openr(ip);
   if(!fp) return 1;
-  uint32_t i[3];
+  U4 i[3];
   const char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
@@ -330,13 +330,13 @@ static bool w2p(const char *ip, const char *op) {
     fclose(fp);
     return 1;
   }
-  uint32_t l = lh(i[1]) + 8u; // RIFF header size
+  U4 l = lh(i[1]) + 8u; // RIFF header size
   if(l < 28u || l > 0xfffffffeu) {
     P("ERROR reading: %s", k[2]);
     fclose(fp);
     return 1;
   }
-  uint8_t *x = malloc(l);
+  U *x = malloc(l);
   if(!x) {
     P("ERROR reading: %s", *k);
     fclose(fp);
@@ -370,8 +370,8 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
 #define V I.format
-#define W ((uint32_t)I.width)
-#define H ((uint32_t)I.height)
+#define W ((U4)I.width)
+#define H ((U4)I.height)
 #define A I.has_alpha
 #ifdef LOSSYISERROR
 #define FMTSTR
@@ -397,7 +397,7 @@ static bool w2p(const char *ip, const char *op) {
   }
 #endif
 #define B (3u + (unsigned)A) // assume 0 or 1
-  uint8_t *b = malloc(W * H * B);
+  U *b = malloc(W * H * B);
   if(!b) {
     P("ERROR reading: %s", *k);
     free(x);
@@ -459,7 +459,7 @@ static bool w2p(const char *ip, const char *op) {
   // S(compression_memlevel, 9);
   S(IHDR, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
   png_write_info(p, n);
-  uint8_t *w = b;
+  U *w = b;
   for(unsigned y = H; y; y--) {
     png_write_row(p, w);
     w += W * B;
@@ -478,7 +478,7 @@ static bool w2p(const char *ip, const char *op) {
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
   {
-    const uint32_t x = lh(u4("4321"));
+    const U4 x = lh(u4("4321"));
     if(x == u4("1234"))
       P("Warning: %s", "Big-endian support is untested"); // TODO
     else if(x != u4("4321")) {

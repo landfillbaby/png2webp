@@ -26,15 +26,15 @@ static int help(void) {
 EXE:   Windows PE32(+) file\n\
 STAMP: new Unix timestamp,\n\
        decimal, octal (leading 0), or hexadecimal (leading 0x)\n",
-		stderr);
+			stderr);
 	return -1;
 }
 int main(int argc, char **argv) {
-	uint32_t b, t; // uninitialized warnings are false :)
+	U4 b, t; // uninitialized warnings are false :)
 	if(argc == 3) {
 		if(!*argv[2] || isspace(*argv[2])) return help();
 		char *n;
-		t = (uint32_t)strtoull(argv[2], &n, 0);
+		t = (U4)strtoull(argv[2], &n, 0);
 		if(*n || errno) return help();
 	} else if(argc != 2) return help();
 	FILE *const f = fopen(argv[1], argc == 3 ? "rb+" : "rb");
@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
 	}
 #define R(x) !fread(&b, x, 1, f)
 	if(R(2) || u2(&b) != u2("\x4d\x5a") || S(f, 60, SEEK_SET) || R(4)
-		|| S(f, lh(b), SEEK_SET) || R(4) || b != hl(17744u)
-		|| S(f, 4, SEEK_CUR) || R(4)) {
+			|| S(f, lh(b), SEEK_SET) || R(4) || b != hl(17744u)
+			|| S(f, 4, SEEK_CUR) || R(4)) {
 		fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
 		fclose(f);
 		return 1;

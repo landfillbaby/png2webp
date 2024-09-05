@@ -6,23 +6,25 @@
 #if CHAR_BIT != 8
 #error "char isn't 8-bit"
 #endif
-static inline uint16_t u2(const void *x) {
-	uint16_t r;
+typedef uint8_t U;
+typedef uint16_t U2;
+typedef uint32_t U4;
+static inline U2 u2(const void *x) {
+	U2 r;
 	memcpy(&r, x, 2);
 	return r;
 }
-static inline uint32_t u4(const void *x) {
-	uint32_t r;
+static inline U4 u4(const void *x) {
+	U4 r;
 	memcpy(&r, x, 4);
 	return r;
 }
-#define S(n) ((uint32_t)((const uint8_t *)&x)[n] << n * 8)
-// little to host
-static inline uint32_t lh(uint32_t x) { return S(0) | S(1) | S(2) | S(3); }
-#undef S
-static inline uint32_t hl(uint32_t x) { // host to little
-#define S(n) ((x >> n) & 255)
-	return u4((uint8_t[]){S(0), S(8), S(16), S(24)});
-#undef S
+static inline U4 lh(U4 x) { // little to host
+	U y[4];
+	memcpy(y, &x, 4);
+	return (U4)*y | ((U4)y[1] << 8) | ((U4)y[2] << 16) | ((U4)y[3] << 24);
+}
+static inline U4 hl(U4 x) { // host to little
+	return u4((U[]){(U)x, (U)(x >> 8), (U)(x >> 16), (U)(x >> 24)});
 }
 #endif
