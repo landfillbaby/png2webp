@@ -1,5 +1,6 @@
 #!/bin/sh
-PATH="$(dirname -- "$(readlink -f -- "$0")"):$PATH" png2webp -v -- "$@"
+PATH="$(dirname -- "$(readlink -f -- "$0" || realpath -- "$0")"):$PATH" \
+	png2webp -v -- "$@"
 ret=$?
 if [ $ret -ne 0 ]
 then
