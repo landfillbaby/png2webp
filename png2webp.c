@@ -45,7 +45,7 @@
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
-#if(' ' == '\40' && '0' == '\60' && 'A' == '\101' && 'a' == '\141') \
+#if (' ' == '\40' && '0' == '\60' && 'A' == '\101' && 'a' == '\141') \
     || (' ' == '\100' && '0' == '\360' && 'A' == '\301' && 'a' == '\201')
 #define ASCII_OR_EBCDIC
 #endif
@@ -162,7 +162,8 @@ static int progress(int percent, const WebPPicture *x) {
   (void)x;
   char h[64];
   memset(h, '#', 64u);
-  eprintf("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, percent);
+  eprintf(
+      "\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
   return 1;
 }
 static bool p2w(const char *ip, const char *op) {
@@ -260,9 +261,9 @@ static bool p2w(const char *ip, const char *op) {
       "???", "RGBA"};
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s",
-      width, height, pnglen, (double)pnglen * 8u / (width * height), bitdepth,
-      f[(unsigned)colortype], trns ? ", with transparency" : "",
-      passes > 1u ? ", interlaced" : "");
+      width, height, pnglen, (double)pnglen * 8u / (width * height),
+      (unsigned)bitdepth, f[(unsigned)colortype],
+      trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
   WebPConfig c;
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100u)) {
     P("ERROR writing: %s", k[3]);
@@ -279,7 +280,7 @@ static bool p2w(const char *ip, const char *op) {
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
       .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
-  if(doprogress) eprintf("[%-64.*s] %u%%", 0, "", 0);
+  if(doprogress) eprintf("[%-64.*s] %u%%", 0, "", 0u);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
@@ -302,10 +303,11 @@ static bool p2w(const char *ip, const char *op) {
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u transform=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
-      s.lossless_size,
+      (unsigned)s.lossless_size,
       (double)(unsigned)s.lossless_size * 8u / (U4)(o.width * o.height),
-      s.lossless_hdr_size, s.lossless_data_size, trns ? "yes" : "no",
-      s.histogram_bits, s.transform_bits, s.cache_bits,
+      (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
+      trns ? "yes" : "no", (unsigned)s.histogram_bits,
+      (unsigned)s.transform_bits, (unsigned)s.cache_bits,
       F ? F & 1u ? " prediction" : "" : " none",
       F && F & 2u ? " cross-color" : "", F && F & 4u ? " subtract-green" : "",
       F && F & 8u ? " palette" : "", C ? "" : ">", C ? (unsigned)C : 256u);
