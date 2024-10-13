@@ -538,8 +538,8 @@ int main(int sargc, char **argv) {
 #ifdef ASCII_OR_EBCDIC
 	  (u4(*argv + len - 4u) | u4("    ")) == (u4("webp") | u4("    "))
 #else
-	  (K(4u, 'w') || K(4u, 'W')) && (K(3u, 'e') || K(3u, 'E'))
-	  && (K(2u, 'b') || K(2u, 'B')) && (K(1u, 'p') || K(1u, 'P'))
+#define J(x, y) (K(x, *y) || K(x, y[1]))
+	  J(4u, "wW") && J(3u, "eE") && J(2u, "bB") && J(1u, "pP")
 #endif
       )
 	len -= 5u;
@@ -576,8 +576,7 @@ int main(int sargc, char **argv) {
 #ifdef ASCII_OR_EBCDIC
 	  (u4(*argv + len - 4u) | u4("\0   ")) == (u4(".png") | u4("\0   "))
 #else
-	  K(4u, '.') && (K(3u, 'p') || K(3u, 'P')) && (K(2u, 'n') || K(2u, 'N'))
-	  && (K(1u, 'g') || K(1u, 'G'))
+	  K(4u, '.') && J(3u, "pP") && J(2u, "nN") && J(1u, "gG")
 #endif
       )
 	len -= 4u;
