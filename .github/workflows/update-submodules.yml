@@ -33,8 +33,11 @@ jobs:
           # alternate method 2: newest tag by date:
           # tag="$(git tag --sort=-creatordate | head -n1)"
 
+          regex="[vV]?[0-9.]+" # only tags that match this
+
           cur="$(git describe --tags)"
-          if [ "$cur" != "$tag" ] && printf "%s\n%s" "$cur" "$tag" | sort -VC
+          if echo "$tag" | grep -qEx "$regex" && [ "$cur" != "$tag" ] &&
+            printf "%s\n%s" "$cur" "$tag" | sort -VC
           then
             git switch -dq -- "$tag"
             printf "%s\n" "$name: $cur -> $tag"
