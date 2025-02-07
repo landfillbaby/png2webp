@@ -1,3 +1,5 @@
+# 2025 update: this was dumb. just use `cwebp` and `dwebp` like google wants you to
+
 # PNG2WebP
 Simple command-line batch PNG to WebP converter (and vice versa).
 
