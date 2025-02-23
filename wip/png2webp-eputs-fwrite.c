@@ -302,14 +302,14 @@ static bool p2w(const char *ip, const char *op) {
 #define C s.palette_size
   PV("Output info:\nSize: %u bytes (%.15g bpp)\n\
 Header size: %u, image data size: %u\nUses alpha: %s\n\
-Precision bits: histogram=%u transform=%u cache=%u\n\
+Precision bits: histogram=%u prediction=%u cross-color=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
       (unsigned)s.lossless_size,
       (double)(unsigned)s.lossless_size * 8u / (U4)(o.width * o.height),
       (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
       trns ? "yes" : "no", (unsigned)s.histogram_bits,
-      (unsigned)s.transform_bits, (unsigned)s.cache_bits,
-      F ? F & 1u ? " prediction" : "" : " none",
+      (unsigned)s.transform_bits, (unsigned)s.cross_color_transform_bits,
+      (unsigned)s.cache_bits, F ? F & 1u ? " prediction" : "" : " none",
       F && F & 2u ? " cross-color" : "", F && F & 4u ? " subtract-green" : "",
       F && F & 8u ? " palette" : "", C ? "" : ">", C ? (unsigned)C : 256u);
   return 0;
