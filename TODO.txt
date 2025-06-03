@@ -65,13 +65,16 @@ update each in the progress hook
 then in main thread, update all progress bars all at once every few seconds
 
 alternatively, just use a single progress bar
-and clear the line (space\r) before every stderr output
+and clear the line (spaces\r) at beginning of every stderr output (see below)
 needs its own thread that sleeps for idk 100ms? 10 times a second
-size_t percent_done = count_done * 100;
+or just a function like before
+size_t percent_done = files_done * 100;
 for(size_t i = 0; i < thread_count; i++) percent_done += percentage[i];
-percent_done /= total_files * 100;
-then just need a mutex or something before each printf
-and some minor modification to each output
+percent_done /= files_total;
+
+output file path on each stderr output:
+\v<(eprintf|PV?|fputs|perror)>
+replace strerror with strerror_s/strerror_r stuff?
 
 -j arg but should 0 mean -j=num_processors or -j=num_inputs (make does 2nd one)
 

@@ -9,7 +9,7 @@
 #include "p2wconf.h"
 #endif
 #ifndef VERSION
-#define VERSION "v1.2.2"
+#define VERSION "v2.0.0-wip" // TODO
 #endif
 #include "pun.h"
 #include <inttypes.h>
@@ -130,8 +130,9 @@ static FILE *openw(const char *op) {
 static __thread size_t pnglen;
 /* ^ TODO
 typedef struct {
-  size_t pnglen;
   FILE *fp;
+  size_t pnglen;
+  char *pngpath;
 } pngptr;
 */
 static void pngread(png_struct *p, U *d, size_t s) {
@@ -286,7 +287,7 @@ static bool p2w(const char *ip, const char *op) {
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
       .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
-  if(doprogress) eprintf("[%-64.*s] %u%%", 0, "", 0u);
+  // if(doprogress) eprintf("[%-64.*s] %u%%", 0, "", 0u);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
