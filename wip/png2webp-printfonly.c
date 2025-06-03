@@ -50,7 +50,7 @@
 #define ASCII_OR_EBCDIC
 #endif
 static int help(void) {
-  fputs("PNG2WebP " VERSION /*TODO*/ " - threading branch\n\
+  eprintf("PNG2WebP " VERSION "\n\
 \n\
 Usage:\n\
 png2webp [-refv] [--] INFILE ...\n\
@@ -66,8 +66,7 @@ png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
 -f: Force overwrite of output files (has no effect on stdout).\n\
 -v: Be verbose.\n\
 -t: Print a progress bar even when stderr isn't a terminal (not for `-r`).\n\
---: Explicitly stop parsing options.\n",
-      stderr);
+--: Explicitly stop parsing options.\n");
   return -1;
 }
 static bool exact, force, verbose, doprogress;
@@ -98,7 +97,7 @@ static FILE *openr(const char *ip) {
   return fp;
 }
 static FILE *openw(const char *op) {
-  if(verbose) fputs("Encoding ...\n", stderr);
+  if(verbose) eprintf("Encoding ...\n");
   if(!op) return stdout;
   FILE *fp;
 #ifdef NOFOPENX
@@ -127,13 +126,7 @@ static FILE *openw(const char *op) {
 #endif
   return fp;
 }
-static __thread size_t pnglen;
-/* ^ TODO
-typedef struct {
-  size_t pnglen;
-  FILE *fp;
-} pngptr;
-*/
+static size_t pnglen;
 static void pngread(png_struct *p, U *d, size_t s) {
   if(!fread(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
   pnglen += s;
@@ -270,7 +263,7 @@ static bool p2w(const char *ip, const char *op) {
       width, height, pnglen, (double)pnglen * 8u / (width * height),
       (unsigned)bitdepth, f[(unsigned)colortype],
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
-  WebPConfig c; // TODO: global static, move assignment to main?
+  WebPConfig c;
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100u)) {
     P("ERROR writing: %s", k[3]);
     goto p2w_free;
@@ -281,7 +274,7 @@ static bool p2w(const char *ip, const char *op) {
 #ifndef NOTHREADS
   c.thread_level = 1; // doesn't seem to affect output
 #endif
-  c.exact = exact; // end TODO
+  c.exact = exact;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
@@ -290,7 +283,7 @@ static bool p2w(const char *ip, const char *op) {
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
-  if(doprogress) fputs("\n", stderr);
+  if(doprogress) eprintf("\n");
   if(!r) {
     P("ERROR writing: %s", k[o.error_code - 1u]);
     fclose(fp);
@@ -537,13 +530,12 @@ int main(int sargc, char **argv) {
   if(!argc) return help();
   bool ret = 0;
   if(reverse)
-#pragma omp parallel for // TODO: pthread, fix stderr output
-    for(unsigned i = 0; i < argc; i++) {
-      size_t len = strlen(argv[i]);
-#define K(x, y) (argv[i][len - x] == y)
+    for(; argc; argc--, argv++) {
+      size_t len = strlen(*argv);
+#define K(x, y) (argv[0][len - x] == y)
       if(len > 4u && K(5u, '.') &&
 #ifdef ASCII_OR_EBCDIC
-	  (u4(argv[i] + len - 4u) | u4("    ")) == (u4("webp") | u4("    "))
+	  (u4(*argv + len - 4u) | u4("    ")) == (u4("webp") | u4("    "))
 #else
 #define J(x, y) (K(x, *y) || K(x, y[1]))
 	  J(4u, "wW") && J(3u, "eE") && J(2u, "bB") && J(1u, "pP")
@@ -556,7 +548,7 @@ int main(int sargc, char **argv) {
 #ifdef NOVLA
       char *op = malloc(len + 5u);
       if(!op) {
-	P("ERROR adding %s extension to %s: %s", ".png", argv[i],
+	P("ERROR adding %s extension to %s: %s", ".png", *argv,
 	    "Out of memory");
 	return 1;
       }
@@ -569,20 +561,19 @@ int main(int sargc, char **argv) {
       char op[len + 5u];
 #endif
       memcpy(op + len, ".png", 5u);
-      memcpy(op, argv[i], len); // the only real memcpy
-      ret = w2p(argv[i], op) || ret;
+      memcpy(op, *argv, len); // the only real memcpy
+      ret = w2p(*argv, op) || ret;
 #ifdef NOVLA
       free(op);
 #endif
     }
   else {
     if(!doprogress) doprogress = isatty(2);
-#pragma omp parallel for // TODO: ditto
-    for(unsigned i = 0; i < argc; i++) {
-      size_t len = strlen(argv[i]);
+    for(; argc; argc--, argv++) {
+      size_t len = strlen(*argv);
       if(len > 3u &&
 #ifdef ASCII_OR_EBCDIC
-	  (u4(argv[i] + len - 4u) | u4("\0   ")) == (u4(".png") | u4("\0   "))
+	  (u4(*argv + len - 4u) | u4("\0   ")) == (u4(".png") | u4("\0   "))
 #else
 	  K(4u, '.') && J(3u, "pP") && J(2u, "nN") && J(1u, "gG")
 #endif
@@ -591,7 +582,7 @@ int main(int sargc, char **argv) {
 #ifdef NOVLA
       char *op = malloc(len + 6u);
       if(!op) {
-	P("ERROR adding %s extension to %s: %s", ".webp", argv[i],
+	P("ERROR adding %s extension to %s: %s", ".webp", *argv,
 	    "Out of memory");
 	return 1;
       }
@@ -604,8 +595,8 @@ int main(int sargc, char **argv) {
       char op[len + 6u];
 #endif
       memcpy(op + len, ".webp", 6u);
-      memcpy(op, argv[i], len); // the only real memcpy
-      ret = p2w(argv[i], op) || ret;
+      memcpy(op, *argv, len); // the only real memcpy
+      ret = p2w(*argv, op) || ret;
 #ifdef NOVLA
       free(op);
 #endif
