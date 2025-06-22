@@ -303,8 +303,8 @@ static bool p2w(const char *ip, const char *op) {
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u prediction=%u cross-color=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
-      (unsigned)s.lossless_size,
-      (double)(unsigned)s.lossless_size * 8u / (U4)(o.width * o.height),
+      (unsigned)s.coded_size,
+      (double)(unsigned)s.coded_size * 8u / (U4)(o.width * o.height),
       (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
       trns ? "yes" : "no", (unsigned)s.histogram_bits,
       (unsigned)s.transform_bits, (unsigned)s.cross_color_transform_bits,

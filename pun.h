@@ -6,9 +6,9 @@
 #if CHAR_BIT != 8
 #error "char isn't 8-bit"
 #endif
-typedef uint8_t U;
-typedef uint16_t U2;
-typedef uint32_t U4;
+#define U uint8_t
+#define U2 uint16_t
+#define U4 uint32_t
 static inline U2 u2(const void *x) {
 	U2 r;
 	memcpy(&r, x, 2);

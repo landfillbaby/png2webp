@@ -19,7 +19,6 @@ windows: HANDLE
 	maybe other stuff like this gist:
 	https://gist.github.com/petrsnd/e94c6100c9f2c8c6df10
 	see how robocopy /copyall does it (how?)
-others: who cares lol
 
 negative cli flags? capitalize?
 
@@ -56,18 +55,23 @@ clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 no setjmp/longjmp ??
 use custom struct with png_create_(read|write)_struct and png_get_error_ptr
 
-LOSSYISERROR variant: work with RIFFxxxxWEBPVP8Lyyyy/ directly.
-x > y && (x == y + 12 || (!(x % 2) && y % 2 && x == y + 13))
+'RIFFxxxxWEBPVP8[ LX]yyyy'
+:%s/U4 i\[3\]/U4 i[5]/g|%s/12u/20u/g|%s/0x8000000bu/0x80000013u/g
+check i[3] (LOSSYISERROR exclude 'VP8 '? or only VP8L? 'RIFFxxxxWEBPVP8Lyyyy/'?)
+U4 x = lh(i[1]), y = lh(i[4]);
+x >= 20u && y >= 8u && x - 12u >= y
+super strict (not VP8X, no metadata): the above &&
+(x - 12u == y || (~x % 2u && y % 2u && x - 13u == y))
+or is it this (x always even)?
+~x % 2u && x - 12u - y % 2u == y
 
 try to make close+unlink atomic, like a delete on close flag: FIO01-C
 windows: FILE_DISPOSITION_INFO or ReOpenFile+FILE_FLAG_DELETE_ON_CLOSE
 freebsd: funlinkat
-other OSes: ???
 maybe instead make a temporary file and copy or rename it on success?
 postpones EEXIST until after encoding is done, as well as decoding as before
 linux 3.11+ (not android): O_TMPFILE, linkat. how to do -f?
 windows: FILE_RENAME_INFO
-other OSes: ???
 or just write to dynamic memory buffer then try to write all at once
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
@@ -82,16 +86,14 @@ just be a wrapper and nothing else
 
 -DALWAYS_{BATCH|PIPE} (disable flag parsing, set verbose to always)
 
-time_t stuff in exestamp.c?
+date time parsing / time_t stuff in exestamp.c?
 
 sync old private dropbox version with git or delete it
 
 versions for newer lossless image formats
-jxl
 webp2 once it's released. see rename comment
-
-maybe for comparison, jxl's predecessors:
-flif -> fuif -> jxl <- pik
+jxl
+maybe for comparison, jxl's predecessors: flif -> fuif -> jxl <- pik
 
 maybe try heif/heic/avif encoders, probably not great for lossless:
 heic: libheif with backends:
