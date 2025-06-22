@@ -22,9 +22,6 @@ windows: HANDLE
 
 negative cli flags? capitalize?
 
-less gotos especially in p2w
-try to minimize null frees without making a bigger exe
-
 check WEBP_REDUCE_SIZE works with all #if in png2webp.c
 
 endian-independent code without adding more swaps on little?
