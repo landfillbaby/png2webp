@@ -188,24 +188,16 @@ static bool p2w(const char *ip, const char *op) {
       "???"}; // canceled
   png_struct *p
       = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
-  if(!p) {
+  if(!p || !(n = png_create_info_struct(p))) {
     P("ERROR reading: %s", *k);
-    goto p2w_close;
-  }
-  n = png_create_info_struct(p);
-  if(!n) {
-    P("ERROR reading: %s", *k);
-    goto p2w_close;
-  }
-  if(setjmp(png_jmpbuf(p))) {
   p2w_close:
     fclose(fp);
     png_destroy_read_struct(&p, &n, 0);
-  p2w_free:
-    if(b) free(b);
+    free(b); // only non-null in row read loop
     return 1;
   }
-  pnglen = 0;
+  if(setjmp(png_jmpbuf(p))) goto p2w_close;
+  pnglen = 0u;
 #define E(x) png_set_##x(p)
 #define S(x, ...) png_set_##x(p, __VA_ARGS__)
   S(read_fn, fp, pngread);
@@ -274,9 +266,13 @@ static bool p2w(const char *ip, const char *op) {
   WebPConfig c; // TODO: global static, move assignment to main?
   if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100u)) {
     P("ERROR writing: %s", k[3]);
-    goto p2w_free;
+    free(b);
+    return 1;
   }
-  if(!(fp = openw(op))) goto p2w_free;
+  if(!(fp = openw(op))) {
+    free(b);
+    return 1;
+  }
   c.lossless = 1;
   c.method = 6;
 #ifndef NOTHREADS
@@ -295,13 +291,15 @@ static bool p2w(const char *ip, const char *op) {
   if(!r) {
     P("ERROR writing: %s", k[o.error_code - 1u]);
     fclose(fp);
-  p2w_rm:
     if(op) unlink(op);
-    goto p2w_free;
+    free(b);
+    return 1;
   }
   if(fclose(fp)) {
     perror("ERROR writing");
-    goto p2w_rm;
+    if(op) unlink(op);
+    free(b);
+    return 1;
   }
   free(b);
 #define F s.lossless_features
@@ -310,8 +308,8 @@ static bool p2w(const char *ip, const char *op) {
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u prediction=%u cross-color=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u",
-      (unsigned)s.lossless_size,
-      (double)(unsigned)s.lossless_size * 8u / (U4)(o.width * o.height),
+      (unsigned)s.coded_size,
+      (double)(unsigned)s.coded_size * 8u / (U4)(o.width * o.height),
       (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
       trns ? "yes" : "no", (unsigned)s.histogram_bits,
       (unsigned)s.transform_bits, (unsigned)s.cross_color_transform_bits,
@@ -443,23 +441,18 @@ static bool w2p(const char *ip, const char *op) {
   png_info *n = 0;
   png_struct *p
       = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
-  if(!p) {
+  if(!p || !(n = png_create_info_struct(p))) {
     P("ERROR writing: %s", *k);
-    goto w2p_close;
-  }
-  n = png_create_info_struct(p);
-  if(!n) {
-    P("ERROR writing: %s", *k);
-    goto w2p_close;
-  }
-  if(setjmp(png_jmpbuf(p))) {
-  w2p_close:
     fclose(fp);
   w2p_rm:
     if(op) unlink(op);
     png_destroy_write_struct(&p, &n);
     free(b);
     return 1;
+  }
+  if(setjmp(png_jmpbuf(p))) {
+    fclose(fp);
+    goto w2p_rm;
   }
   pnglen = 0u;
   S(write_fn, fp, pngwrite, pngflush);
