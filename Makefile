@@ -59,6 +59,7 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/mips/filter_mmi_inline_assembly.c \
 	libpng/mips/filter_msa_intrinsics.c libpng/mips/mips_init.c \
 	libpng/powerpc/filter_vsx_intrinsics.c libpng/powerpc/powerpc_init.c \
+	libpng/riscv/filter_rvv_intrinsics.c libpng/riscv/riscv_init.c \
 	zlib/adler32.c zlib/crc32.c zlib/deflate.c zlib/infback.c \
 	zlib/inffast.c zlib/inflate.c zlib/inftrees.c zlib/trees.c \
 	zlib/zutil.c libwebp/sharpyuv/sharpyuv.c \
@@ -88,7 +89,9 @@ png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libwebp/src/dsp/filters.c libwebp/src/dsp/filters_mips_dsp_r2.c \
 	libwebp/src/dsp/filters_msa.c libwebp/src/dsp/filters_neon.c \
 	libwebp/src/dsp/filters_sse2.c libwebp/src/dsp/lossless.c \
-	libwebp/src/dsp/lossless_enc.c libwebp/src/dsp/lossless_enc_mips32.c \
+	libwebp/src/dsp/lossless_avx2.c libwebp/src/dsp/lossless_enc.c \
+	libwebp/src/dsp/lossless_enc_avx2.c \
+	libwebp/src/dsp/lossless_enc_mips32.c \
 	libwebp/src/dsp/lossless_enc_mips_dsp_r2.c \
 	libwebp/src/dsp/lossless_enc_msa.c libwebp/src/dsp/lossless_enc_neon.c \
 	libwebp/src/dsp/lossless_enc_sse2.c \
