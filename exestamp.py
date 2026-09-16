@@ -13,11 +13,11 @@ if __name__ == '__main__':
     with open(f, 'rb' if t is None else 'rb+') as f:
         r, w, s = f.read, f.write, f.seek
         def f() -> int: return u(r(4))[0]
-        m = 'Not a Windows PE32(+) file'
-        if r(2) != b'MZ': raise ValueError(m)
+        e = ValueError('Not a Windows PE32(+) file')
+        if r(2) != b'MZ': raise e
         s(60)
         s(f())
-        if r(4) != b'PE\0\0': raise ValueError(m)
+        if r(4) != b'PE\0\0': raise e
         s(4, 1)
         if t is None: print(f())
         else:

@@ -53,13 +53,14 @@ int main(int argc, char **argv) {
 	if(argc == 3) {
 		printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", lh(b), t);
 		t = hl(t);
+#define E perror("ERROR writing new timestamp")
 		if(S(f, -4, SEEK_CUR) || !fwrite(&t, 4, 1, f)) {
-			perror("ERROR writing new timestamp");
+			E;
 			fclose(f);
 			return 1;
 		}
 		if(fclose(f)) {
-			perror("ERROR writing new timestamp");
+			E;
 			return 1;
 		}
 	} else {

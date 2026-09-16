@@ -3,7 +3,6 @@ see also the TODO comments in the files themselves
 flag to delete input files on success (-d?)
 
 flag to copy file times and attributes (-k?)
-use png2webp-eputs.c as base
 change FILE|fp|png_get_io_ptr
 posix: int fd
 	in: fstat (+ something acl or xattr or selinux security context?)
@@ -29,7 +28,7 @@ endian-independent code without adding more swaps on little?
 restrict const register static etc? or just rely on clang
 e.g. static WebPConfig?
 
-configure: LOSSYISERROR NOVLA DOFLUSH USEGETOPT
+configure: LOSSYISERROR DOFLUSH USEGETOPT
 maybe just use autoconf
 
 nmake? remake compile-msvc.bat ?
@@ -65,11 +64,11 @@ or is it this (x always even)?
 try to make close+unlink atomic, like a delete on close flag: FIO01-C
 windows: FILE_DISPOSITION_INFO or ReOpenFile+FILE_FLAG_DELETE_ON_CLOSE
 freebsd: funlinkat
-maybe instead make a temporary file and copy or rename it on success?
+maybe instead make a temporary file/directory and copy or rename on success?
 postpones EEXIST until after encoding is done, as well as decoding as before
-linux 3.11+ (not android): O_TMPFILE, linkat. how to do -f?
+linux 3.11+ (not android: O_TMPFILE, linkat. how to do -f?) or renameat2?
 windows: FILE_RENAME_INFO
-or just write to dynamic memory buffer then try to write all at once
+or just write to dynamic memory buffer/tmpfile then try to write all at once
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?

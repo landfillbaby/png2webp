@@ -114,9 +114,6 @@ problems happen without `-f`: system errors, overwriting anyway, etc.
 It's undefined behavior. This forces a workaround, used automatically
 when compiling with no C11 support, with POSIX `open()` and `fdopen()`.
 
-`NOVLA`: Use `malloc()`/`free()` instead of a C99 variable-length array
-for output filenames in batch mode. May be on by default in C11 onwards.
-
 `USEGETOPT`: Use `getopt` for command-line parsing instead of a simple loop.
 
 `NOTHREADS`: Use single-threaded WebP encoding/decoding.
