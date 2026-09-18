@@ -2,7 +2,7 @@
 #define _FILE_OFFSET_BITS 64
 #endif
 #ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809
+#define _POSIX_C_SOURCE 200809L
 #endif
 #include "pun.h"
 #include <ctype.h>

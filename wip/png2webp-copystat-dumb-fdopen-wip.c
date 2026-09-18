@@ -211,13 +211,13 @@ static bool p2w(const char *ip, const char *op) {
   png_read_update_info(p, n);
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
-  if(rowbytes != width * (size_t)4u) {
+  if(rowbytes != (size_t)4u * width) {
     P("ERROR reading: rowbytes is %zu, should be %zu\n", rowbytes,
-	width * (size_t)4u);
+	(size_t)4u * width);
     P2W_CLOSE;
   }
 #endif
-  b = malloc(width * height * (size_t)4u);
+  b = malloc((size_t)4u * width * height);
   if(!b) {
     PR(*k);
     P2W_CLOSE;
@@ -226,7 +226,7 @@ static bool p2w(const char *ip, const char *op) {
     U *w = (U *)b;
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
-      w += width * (size_t)4u;
+      w += (size_t)4u * width;
     }
   }
   png_read_end(p, 0);
@@ -248,6 +248,7 @@ static bool p2w(const char *ip, const char *op) {
   OP;
   c.lossless = 1;
   c.method = 6;
+  c.image_hint = WEBP_HINT_GRAPH; // init VP8LBitWriter to 8 bpp
 #ifndef NOTHREADS
   c.thread_level = 1; // doesn't seem to affect output
 #endif
@@ -262,7 +263,7 @@ static bool p2w(const char *ip, const char *op) {
   int r = WebPEncode(&c, &o);
   if(doprogress) M("\n");
   if(!r) {
-    PW(k[o.error_code - 1u]);
+    PW(k[(unsigned)o.error_code - 1u]);
     fclose(fp);
     if(op) unlink(op);
     free(b);
@@ -282,7 +283,7 @@ Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u prediction=%u cross-color=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u\n",
       (unsigned)s.coded_size,
-      (double)(unsigned)s.coded_size * 8u / (U4)(o.width * o.height),
+      (double)(unsigned)s.coded_size * 8u / ((U4)o.width * (U4)o.height),
       (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
       trns ? "yes" : "no", (unsigned)s.histogram_bits,
       (unsigned)s.transform_bits, (unsigned)s.cross_color_transform_bits,
@@ -321,11 +322,9 @@ static bool w2p(const char *ip, const char *op) {
   if(
 #if defined __ANDROID__ && __ANDROID_API__ < 34
       l > 0x8000000bu // https://issuetracker.google.com/240139009
-	  ? R(x + 12u, (size_t)0x7fffffffu)
-	      || R(x + 0x8000000bu, l - (size_t)0x8000000bu)
-	  :
+	  ? R(x + 12u, 0x7fffffffu) || R(x + 0x8000000bu, l - 0x8000000bu) :
 #endif
-	  R(x + 12u, l - (size_t)12u)) {
+	  R(x + 12u, l - 12u)) {
     PR(k[6]);
     fclose(fp);
     free(x);
@@ -340,14 +339,16 @@ static bool w2p(const char *ip, const char *op) {
 #endif
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
   if(r) {
-    PR(k[r - 1u]);
+    PR(k[(unsigned)r - 1u]);
     free(x);
     return 1;
   }
-#define V I.format
+#define V ((unsigned)I.format)
 #define W ((U4)I.width)
 #define H ((U4)I.height)
-#define A I.has_alpha
+#define A (!!I.has_alpha)
+#define B ((U4)3u + A)
+#define L ((size_t)B * W * H)
 #ifdef LOSSYISERROR
 #define FMTSTR
 #define FMTARG
@@ -371,16 +372,14 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
 #endif
-#define B (3u + (unsigned)A) // assume 0 or 1
-  U *b = malloc(W * H * B);
+  U *b = malloc(L);
   if(!b) {
     PR(*k);
     free(x);
     return 1;
   }
 #if defined LOSSYISERROR || defined NOTHREADS
-  if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(
-	 x, l, b, W * H * B, (int)(W * B))) {
+  if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(x, l, b, L, (int)(B * W))) {
     PR(k[2]);
     free(b);
     free(x);
@@ -391,11 +390,11 @@ static bool w2p(const char *ip, const char *op) {
   c.output.is_external_memory = 1;
 #define D c.output.u.RGBA
   D.rgba = b;
-  D.stride = (int)(W * B);
-  D.size = W * H * B;
+  D.stride = (int)(B * W);
+  D.size = L;
   r = WebPDecode(x, l, &c);
   if(r) {
-    PR(k[r - 1u]);
+    PR(k[(unsigned)r - 1u]);
     free(b);
     free(x);
     return 1;
@@ -432,7 +431,7 @@ static bool w2p(const char *ip, const char *op) {
   U *w = b;
   for(unsigned y = H; y; y--) {
     png_write_row(p, w);
-    w += W * B;
+    w += (size_t)B * W;
   }
   png_write_end(p, n);
   if(fclose(fp)) {
