@@ -25,6 +25,10 @@
 #ifndef _CRT_NONSTDC_NO_WARNINGS
 #define _CRT_NONSTDC_NO_WARNINGS
 #endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
 #include <fcntl.h>
 #include <io.h>
 #else
@@ -94,6 +98,19 @@ static FILE *openr(const char *ip) {
 #endif
   return fp;
 }
+static inline void unlink_open_file(const char *path, int fd) {
+#ifdef __FreeBSD__
+  funlinkat(AT_CWD, path, fd, 0); // why isn't this in POSIX
+#elif defined _WIN32
+  (void)path;
+  FILE_DISPOSITION_INFO i = { .DeleteFile = TRUE };
+  SetFileInformationByHandle((HANDLE)_get_osfhandle(fd), FileDispositionInfo,
+      &i, sizeof(i));
+#else // TODO: find fixes for other OSes
+  (void)fd;
+  unlink(path); // TOCTOU race condition :(
+#endif
+}
 static FILE *openw(const char *op) {
   P("Encoding %s ...\n", op ? op : "<stdout>");
   if(!op) return stdout;
@@ -112,8 +129,8 @@ static FILE *openw(const char *op) {
   }
   if(!(fp = fdopen(fd, "wb"))) {
     EW;
+    unlink_open_file(op, fd);
     close(fd);
-    unlink(op);
     return 0;
   }
 #else
@@ -123,6 +140,10 @@ static FILE *openw(const char *op) {
   }
 #endif
   return fp;
+}
+static void unlink_and_close(const char *path, FILE *fp) {
+  if(path) unlink_open_file(path, fileno(fp));
+  fclose(fp);
 }
 static size_t pnglen;
 static void pngread(png_struct *p, U *d, size_t s) {
@@ -284,17 +305,17 @@ static bool p2w(const char *ip, const char *op) {
   if(doprogress) M("\n");
   if(!r) {
     PW(k[(unsigned)o.error_code - 1u]);
-    fclose(fp);
-    if(op) unlink(op);
+    unlink_and_close(op, fp);
     free(b);
     return 1;
   }
-  if(fclose(fp)) {
+  if(fflush(fp)) {
     EW;
-    if(op) unlink(op);
+    unlink_and_close(op, fp);
     free(b);
     return 1;
   }
+  fclose(fp);
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
@@ -427,20 +448,16 @@ static bool w2p(const char *ip, const char *op) {
       = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
 #define W2P_RM \
   do { \
-    if(op) unlink(op); \
+    unlink_and_close(op, fp); \
     png_destroy_write_struct(&p, &n); \
     free(b); \
     return 1; \
   } while(0)
   if(!p || !(n = png_create_info_struct(p))) {
     PW(*k);
-    fclose(fp);
     W2P_RM;
   }
-  if(setjmp(png_jmpbuf(p))) {
-    fclose(fp);
-    W2P_RM;
-  }
+  if(setjmp(png_jmpbuf(p))) W2P_RM;
   pnglen = 0u;
   S(write_fn, fp, pngwrite, pngflush);
   S(filter, 0, PNG_ALL_FILTERS);
@@ -454,10 +471,11 @@ static bool w2p(const char *ip, const char *op) {
     w += (size_t)B * W;
   }
   png_write_end(p, n);
-  if(fclose(fp)) {
+  if(fflush(fp)) {
     EW;
     W2P_RM;
   }
+  fclose(fp);
   png_destroy_write_struct(&p, &n);
   free(b);
   PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s\n", pnglen,

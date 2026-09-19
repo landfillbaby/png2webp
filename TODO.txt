@@ -4,14 +4,14 @@ flag to delete input files on success (-d?)
 
 flag to copy file times and attributes (-k?)
 change FILE|fp|png_get_io_ptr
-posix: int fd
+POSIX: int fd
 	in: fstat (+ something acl or xattr or selinux security context?)
 	out: futimens(&stat.st_atim), fchown, fchmod (ditto)
 	see how coreutils cp -p or -a does it
 	dumb alternative like NOFOPENX to avoid having to do IO loops?
 		in: open, stat, fdopen, fread etc, fclose
 		out: open, fdopen, fwrite etc, fflush, futimens etc, fclose
-windows: HANDLE
+Windows: HANDLE
 	CreateFile[AW]
 	using W would mean wmain, wfprintf, etc, but no UTF-8 manifest
 	in/out: FILE_BASIC_INFO (timestamps + attributes (might need a mask?))
@@ -19,7 +19,7 @@ windows: HANDLE
 	https://gist.github.com/petrsnd/e94c6100c9f2c8c6df10
 	see how robocopy /copyall does it (how?)
 
-negative cli flags? capitalize?
+negative CLI flags? capitalize?
 
 check WEBP_REDUCE_SIZE works with all #if in png2webp.c
 
@@ -61,14 +61,17 @@ super strict (not VP8X, no metadata): the above &&
 or is it this (x always even)?
 ~x % 2u && x - 12u - y % 2u == y
 
-try to make close+unlink atomic, like a delete on close flag: FIO01-C
-windows: FILE_DISPOSITION_INFO or ReOpenFile+FILE_FLAG_DELETE_ON_CLOSE
-freebsd: funlinkat
+try to make unlink_and_close atomic/race-free/non-TOCTOU (FIO01-C)
+like a delete on close flag or something
+done: Windows, FreeBSD
+other OSes: ???
 maybe instead make a temporary file/directory and copy or rename on success?
 postpones EEXIST until after encoding is done, as well as decoding as before
-linux 3.11+ (not android: O_TMPFILE, linkat. how to do -f?) or renameat2?
-windows: FILE_RENAME_INFO
+Linux, FS/version specific: (not Android) O_TMPFILE + linkat (how to do -f?)
+			    or renameat2
+Windows: FILE_RENAME_INFO
 or just write to dynamic memory buffer/tmpfile then try to write all at once
+(this is the most portable way)
 
 rename to pngtowebp because of webp2? or just have png2webp2 a separate thing
 support symlink/rename to webp(to|2)png, inverting -r ? p2w w2p?
