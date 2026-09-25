@@ -1,3 +1,4 @@
+// vi: sw=2 tw=80
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
@@ -33,7 +34,7 @@
 #else
 #include <unistd.h>
 #endif
-#if !defined NOFOPENX && __STDC_VERSION__ < 201112
+#if !defined NOFOPENX && __STDC_VERSION__ < 201112L
 #define NOFOPENX
 #endif
 #ifdef NOFOPENX
@@ -99,7 +100,7 @@ static FILE *openr(const char *ip) {
 }
 static inline void unlink_open_file(const char *path, int fd) {
 #ifdef __FreeBSD__
-  funlinkat(AT_CWD, path, fd, 0); // why isn't this in POSIX
+  funlinkat(AT_FDCWD, path, fd, 0); // why isn't this in POSIX?
 #elif defined _WIN32
   (void)path;
   FILE_DISPOSITION_INFO i = { .DeleteFile = TRUE };

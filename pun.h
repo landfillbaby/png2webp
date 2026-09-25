@@ -1,11 +1,6 @@
 #ifndef PUN_H
 #define PUN_H
-#include <limits.h>
 #include <stdint.h>
-#include <string.h>
-#if CHAR_BIT != 8
-#error "char isn't 8-bit"
-#endif
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

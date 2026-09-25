@@ -116,7 +116,7 @@ when compiling with no C11 support, with POSIX `open()` and `fdopen()`.
 
 `USEGETOPT`: Use `getopt` for command-line parsing instead of a simple loop.
 
-`NOTHREADS`: Use single-threaded WebP encoding/decoding.
+`NOTHREADS`: Use single-threaded WebP encoding and lossy decoding.
 I'm pretty sure it only uses 2 threads anyway.
 
 `LOSSYISERROR`: Give an error when trying to decode lossy WebP files.
