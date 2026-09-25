@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 #define S(x, y) fseek(f, x, SEEK_##y)
   if(R(2) || t16(&b) != t16("\x4d\x5a") || S(60, SET) || R(4)
 #if LONG_MAX < 0xffffffff
-      || lh(b) > (unsigned long)LONG_MAX
+      || lh(b) > (u32)LONG_MAX
 #endif
       || S(lh(b), SET) || R(4) || b != hl(17744u) || S(4, CUR) || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
