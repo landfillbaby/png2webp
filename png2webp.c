@@ -9,7 +9,7 @@
 #include "p2wconf.h"
 #endif
 #ifndef VERSION
-#define VERSION "v1.2.2"
+#define VERSION "v1.3.0-dev"
 #endif
 #include "pun.h"
 #include <inttypes.h>
@@ -49,11 +49,25 @@
 #include "webp/encode.h"
 #define M(x) fputs(x, stderr)
 static int help(void) {
-  M("PNG2WebP " VERSION "\n\
+  // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
+  fputs("PNG2WebP " VERSION
+#ifdef NOFOPENX
+      " NOFOPENX"
+#endif
+#ifdef USEGETOPT
+      " USEGETOPT"
+#endif
+#ifdef LOSSYISERROR
+      " LOSSYISERROR"
+#endif
+#ifdef DOFLUSH
+      " DOFLUSH"
+#endif
+      "\n\
 \n\
 Usage:\n\
-png2webp [-refv] [--] INFILE ...\n\
-png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
+png2webp [-refvt] [--] INFILE ...\n\
+png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
 \n\
 -p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
@@ -65,7 +79,7 @@ png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
 -f: Force overwrite of output files (has no effect on stdout).\n\
 -v: Be verbose.\n\
 -t: Print a progress bar even when stderr isn't a terminal (not for `-r`).\n\
---: Explicitly stop parsing options.\n");
+--: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
 static bool exact, force, verbose, doprogress;
@@ -290,9 +304,6 @@ static bool p2w(const char *ip, const char *op) {
   c.lossless = 1;
   c.method = 6;
   c.image_hint = WEBP_HINT_GRAPH; // init VP8LBitWriter to 8 bpp
-#ifndef NOTHREADS
-  c.thread_level = 1; // doesn't seem to affect output
-#endif
   c.exact = exact;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
@@ -372,12 +383,7 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
   fclose(fp);
-#if defined LOSSYISERROR || defined NOTHREADS
   WebPBitstreamFeatures I;
-#else
-  WebPDecoderConfig c = {.options.use_threads = 1};
-#define I c.input
-#endif
   VP8StatusCode r = WebPGetFeatures(x, l, &I);
   if(r) {
     PR(k[(unsigned)r - 1u]);
@@ -419,28 +425,12 @@ static bool w2p(const char *ip, const char *op) {
     free(x);
     return 1;
   }
-#if defined LOSSYISERROR || defined NOTHREADS
   if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(x, l, b, L, (int)(B * W))) {
     PR(k[2]);
     free(b);
     free(x);
     return 1;
   }
-#else
-  c.output.colorspace = A ? MODE_RGBA : MODE_RGB;
-  c.output.is_external_memory = 1;
-#define D c.output.u.RGBA
-  D.rgba = b;
-  D.stride = (int)(B * W);
-  D.size = L;
-  r = WebPDecode(x, l, &c);
-  if(r) {
-    PR(k[(unsigned)r - 1u]);
-    free(b);
-    free(x);
-    return 1;
-  }
-#endif
   free(x);
   OP;
   png_info *n = 0;

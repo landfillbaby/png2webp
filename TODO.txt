@@ -35,7 +35,6 @@ nmake? remake compile-msvc.bat ?
 try to figure out how to use clang-cl on windows instead of msys2
 it's in the native tools %path% now
 make a separate build batch for it (or cmake?)
-make sure NOTHREADS is !WEBP_USE_THREAD
 
 add some flags to libpng configure. no phys and other useless stuff
 after that, add a bunch of patches to the submodules

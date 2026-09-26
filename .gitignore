@@ -57,5 +57,4 @@ dkms.conf
 /png2webp
 /exestamp
 /p2wconf.h
-/conf/pthread.mk
 /conf/fopenx

@@ -1,21 +1,16 @@
 #!/bin/sh
 set -e
-nothreads=0
 fopenx=2
 gitdescribe=1
 version=
 [ -z "$CC" ] && CC=cc
 for arg; do case "$arg" in
-	--disable-threading) nothreads=1;;
 	--enable-fopen-x) fopenx=1;;
 	--disable-fopen-x) fopenx=0;;
 	--disable-git-describe) gitdescribe=0;;
 	--help)
 		echo 'usage: ./configure [flags]'
 		echo flags are passed to libpng and libwebp\'s configures
-		echo
-		echo --disable-threading: force single-threaded build
-		echo default is to follow libwebp\'s threading test
 		echo
 		echo '--enable-fopen-x: force use of C11 fopen("wbx")'
 		echo '--disable-fopen-x: force use of POSIX fdopen()'
@@ -41,7 +36,8 @@ echo configured libpng
 echo configuring libwebp...
 cd ../libwebp
 ./autogen.sh
-./configure --enable-static=yes --enable-shared=no --disable-near-lossless "$@"
+./configure --enable-static=yes --enable-shared=no \
+	--disable-threading --disable-near-lossless "$@"
 echo configured libwebp
 cd ..
 CPPFLAGS="$origCPPFLAGS"
@@ -64,12 +60,6 @@ else
 	echo using default version string
 	echo "PNG2WebP $(grep '^#define VERSION "' png2webp.c | cut '-d"' -f2)"
 fi
-if [ $nothreads -eq 0 ] &&
-	! grep -Fxq '#define WEBP_USE_THREAD 1' libwebp/src/webp/config.h
-then
-	echo threading disabled by libwebp
-	nothreads=2
-fi
 if [ $fopenx -eq 2 ]; then
 	echo 'testing C11 fopen("wbx") support'
 	cd conf
@@ -86,18 +76,6 @@ if [ $fopenx -eq 2 ]; then
 fi
 echo '// p2wconf.h; see README.md' >p2wconf.h
 [ -n "$version" ] && echo "#define VERSION \"$version\"" >>p2wconf.h
-if [ $nothreads -ge 1 ]; then
-	[ $nothreads -eq 1 ] && echo threading disabled by user
-	echo '#define NOTHREADS 1' >>p2wconf.h
-	echo '# PTHREAD_CC =' >conf/pthread.mk
-	echo '# PTHREAD_CFLAGS =' >>conf/pthread.mk
-	echo '# PTHREAD_LIBS =' >>conf/pthread.mk
-else
-	echo threading enabled
-	echo '// #undef NOTHREADS' >>p2wconf.h
-	grep -E '^PTHREAD_(CC|CFLAGS|LIBS)[^[:alnum:]_]' \
-		libwebp/Makefile >conf/pthread.mk
-fi
 if [ $fopenx -eq 1 ]; then
 	echo 'using C11 fopen("wbx")'
 	echo '// #undef NOFOPENX' >>p2wconf.h
