@@ -47,7 +47,6 @@
 #include "png.h"
 #include "webp/decode.h"
 #include "webp/encode.h"
-#define M(x) fputs(x, stderr)
 static int help(void) {
   // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
   fputs("PNG2WebP " VERSION
@@ -159,18 +158,23 @@ static void unlink_and_close(const char *path, FILE *fp) {
   if(path) unlink_open_file(path, fileno(fp));
   fclose(fp);
 }
-static size_t pnglen;
+typedef struct {
+  FILE *const fp;
+  size_t len;
+} pngptr;
 static void pngread(png_struct *p, u8 *d, size_t s) {
-  if(!fread(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
-  pnglen += s;
+  pngptr *i = png_get_io_ptr(p);
+  if(!fread(d, s, 1u, i->fp)) png_error(p, "I/O error");
+  i->len += s;
 }
 static void pngwrite(png_struct *p, u8 *d, size_t s) {
-  if(!fwrite(d, s, 1u, png_get_io_ptr(p))) png_error(p, "I/O error");
-  pnglen += s;
+  pngptr *i = png_get_io_ptr(p);
+  if(!fwrite(d, s, 1u, i->fp)) png_error(p, "I/O error");
+  i->len += s;
 }
 static void pngflush(png_struct *p) {
 #ifdef DOFLUSH
-  if(fflush(png_get_io_ptr(p))) png_error(p, "I/O error");
+  if(fflush(png_get_io_ptr(p)->fp)) png_error(p, "I/O error");
 #else
   (void)p;
 #endif
@@ -197,14 +201,9 @@ static int progress(int percent, const WebPPicture *x) {
   P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
   return 1;
 }
-#define OP \
-  do if(!(fp = openw(op))) { \
-    free(b); \
-    return 1; \
-  } while(0)
 static bool p2w(const char *ip, const char *op) {
-  FILE *fp = openr(ip);
-  if(!fp) return 1;
+  pngptr pi = {openr(ip), 0u};
+  if(!pi.fp) return 1;
   u32 *b = 0;
   png_info *n = 0;
   const char *k[] = {"Out of memory",
@@ -218,7 +217,7 @@ static bool p2w(const char *ip, const char *op) {
       = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
 #define P2W_CLOSE \
   do { \
-    fclose(fp); \
+    fclose(pi.fp); \
     png_destroy_read_struct(&p, &n, 0); \
     free(b); /* only non-null in row read loop */ \
     return 1; \
@@ -228,10 +227,9 @@ static bool p2w(const char *ip, const char *op) {
     P2W_CLOSE;
   }
   if(setjmp(png_jmpbuf(p))) P2W_CLOSE;
-  pnglen = 0u;
 #define E(x) png_set_##x(p)
 #define S(x, ...) png_set_##x(p, __VA_ARGS__)
-  S(read_fn, fp, pngread);
+  S(read_fn, &pi, pngread);
   png_read_info(p, n);
   u32 width, height;
   int bitdepth, colortype;
@@ -285,13 +283,13 @@ static bool p2w(const char *ip, const char *op) {
     }
   }
   png_read_end(p, 0);
-  fclose(fp);
+  fclose(pi.fp);
   png_destroy_read_struct(&p, &n, 0);
   const char *f[] = {"grayscale", "???", "RGB", "paletted", "grayscale + alpha",
       "???", "RGBA"};
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\n",
-      width, height, pnglen, (double)pnglen * 8u / (width * height),
+      width, height, pi.len, (double)pi.len * 8u / (width * height),
       (unsigned)bitdepth, f[(unsigned)colortype],
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
   WebPConfig c;
@@ -300,33 +298,36 @@ static bool p2w(const char *ip, const char *op) {
     free(b);
     return 1;
   }
-  OP;
   c.lossless = 1;
   c.method = 6;
   c.image_hint = WEBP_HINT_GRAPH; // init VP8LBitWriter to 8 bpp
   c.exact = exact;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
-      .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = fp,
+      .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = openw(op),
       .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
+  if(!o.custom_ptr) {
+    free(b);
+    return 1;
+  }
   if(doprogress) P("[%-64.*s] %u%%", 0, "", 0u);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(&c, &o);
-  if(doprogress) M("\n");
+  if(doprogress) fputs("\n", stderr);
   if(!r) {
     PW(k[(unsigned)o.error_code - 1u]);
-    unlink_and_close(op, fp);
+    unlink_and_close(op, o.custom_ptr);
     free(b);
     return 1;
   }
-  if(fflush(fp)) {
+  if(fflush(o.custom_ptr)) {
     EW;
-    unlink_and_close(op, fp);
+    unlink_and_close(op, o.custom_ptr);
     free(b);
     return 1;
   }
-  fclose(fp);
+  fclose(o.custom_ptr);
   free(b);
 #define F s.lossless_features
 #define C s.palette_size
@@ -383,17 +384,17 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
   fclose(fp);
-  WebPBitstreamFeatures I;
-  VP8StatusCode r = WebPGetFeatures(x, l, &I);
+  WebPBitstreamFeatures m;
+  VP8StatusCode r = WebPGetFeatures(x, l, &m);
   if(r) {
     PR(k[(unsigned)r - 1u]);
     free(x);
     return 1;
   }
-#define V ((unsigned)I.format)
-#define W ((u32)I.width)
-#define H ((u32)I.height)
-#define A (!!I.has_alpha)
+#define V ((unsigned)m.format)
+#define W ((u32)m.width)
+#define H ((u32)m.height)
+#define A (!!m.has_alpha)
 #define B ((u32)3u + A)
 #define L ((size_t)B * W * H)
 #ifdef LOSSYISERROR
@@ -407,7 +408,7 @@ static bool w2p(const char *ip, const char *op) {
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
      " bytes (%.15g bpp)\nUses alpha: %s\n" FMTSTR,
       W, H, l, (double)l * 8u / (W * H), A ? "yes" : "no" FMTARG);
-  if(I.has_animation) {
+  if(m.has_animation) {
     PR("Unsupported feature: animation");
     free(x);
     return 1;
@@ -432,13 +433,17 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
   free(x);
-  OP;
+  pngptr pi = {openw(op), 0u};
+  if(!pi.fp) {
+    free(b);
+    return 1;
+  }
   png_info *n = 0;
   png_struct *p
       = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
 #define W2P_RM \
   do { \
-    unlink_and_close(op, fp); \
+    unlink_and_close(op, pi.fp); \
     png_destroy_write_struct(&p, &n); \
     free(b); \
     return 1; \
@@ -448,8 +453,7 @@ static bool w2p(const char *ip, const char *op) {
     W2P_RM;
   }
   if(setjmp(png_jmpbuf(p))) W2P_RM;
-  pnglen = 0u;
-  S(write_fn, fp, pngwrite, pngflush);
+  S(write_fn, &pi, pngwrite, pngflush);
   S(filter, 0, PNG_ALL_FILTERS);
   S(compression_level, 9);
   // S(compression_memlevel, 9);
@@ -461,15 +465,15 @@ static bool w2p(const char *ip, const char *op) {
     w += (size_t)B * W;
   }
   png_write_end(p, n);
-  if(fflush(fp)) {
+  if(fflush(pi.fp)) {
     EW;
     W2P_RM;
   }
-  fclose(fp);
+  fclose(pi.fp);
   png_destroy_write_struct(&p, &n);
   free(b);
-  PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s\n", pnglen,
-      (double)pnglen * 8u / (W * H), A ? "RGBA" : "RGB");
+  PV("Output info:\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s\n", pi.len,
+      (double)pi.len * 8u / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
 int main(int sargc, char **argv) {

@@ -44,7 +44,7 @@ no config structs required just hardcode it
 minimize static build by making strings match some library one where possible
 
 parallelize more, multiple conversions at once?
-needs no global pnglen, total rewrite of terminal output
+total rewrite of terminal output. for now just put filename in every message
 maybe remove all global vars?
 clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
 no setjmp/longjmp ??
