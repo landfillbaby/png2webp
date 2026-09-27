@@ -174,7 +174,8 @@ static void pngwrite(png_struct *p, u8 *d, size_t s) {
 }
 static void pngflush(png_struct *p) {
 #ifdef DOFLUSH
-  if(fflush(png_get_io_ptr(p)->fp)) png_error(p, "I/O error");
+  pngptr *i = png_get_io_ptr(p);
+  if(fflush(i->fp)) png_error(p, "I/O error");
 #else
   (void)p;
 #endif
@@ -276,7 +277,7 @@ static bool p2w(const char *ip, const char *op) {
     P2W_CLOSE;
   }
   for(unsigned x = passes; x; x--) {
-    u8 *w = (u8 *)b;
+    u8 *w = (u8 *)b; // it's fine
     for(unsigned y = height; y; y--) {
       png_read_row(p, w, 0);
       w += (size_t)4u * width;
@@ -483,7 +484,9 @@ int main(int sargc, char **argv) {
     if(x == t32("1234"))
       P("Warning: %s\n", "Big-endian support is untested"); // TODO
     else if(x != t32("4321")) {
-      P("ERROR: system is mixed-endian (%.4s)\n", (const char *)&x);
+      char y[4];
+      memcpy(y, &x, 4);
+      P("ERROR: system is mixed-endian (%.4s)\n", y);
       return 1;
     }
   }

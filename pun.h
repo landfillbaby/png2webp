@@ -16,7 +16,8 @@ static inline u32 t32(const void *x) {
   return r;
 }
 static inline u32 lh(u32 x) { // little to host
-  u8 *y = (u8 *)&x;
+  u8 y[4];
+  memcpy(y, &x, 4);
   return (u32)*y | ((u32)y[1] << 8) | ((u32)y[2] << 16) | ((u32)y[3] << 24);
 }
 static inline u32 hl(u32 x) { // host to little
