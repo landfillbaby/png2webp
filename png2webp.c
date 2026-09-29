@@ -11,7 +11,7 @@
 #ifndef VERSION
 #define VERSION "v1.3.0-dev"
 #endif
-#include "pun.h"
+#include "le.h"
 #include <inttypes.h>
 #include <setjmp.h>
 #include <stdbool.h>
@@ -254,7 +254,7 @@ static bool p2w(const char *ip, const char *op) {
   E(expand);
   E(gray_to_rgb);
   E(packing);
-  if(hl(1u) != 1u) { // TODO: test big-endian
+  if(!*(u8 *)(u16[]){1}) { // TODO: test big-endian
     E(swap_alpha);
     S(add_alpha, 255u, PNG_FILLER_BEFORE);
   } else {
@@ -351,7 +351,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
 static bool w2p(const char *ip, const char *op) {
   FILE *fp = openr(ip);
   if(!fp) return 1;
-  u32 i[3];
+  u8 i[12];
   const char *k[] = {"Out of memory", "Broken config, file a bug report",
       "Invalid WebP", "???", "???", "???", "I/O error"};
   // ^ unsupported feature, suspended, canceled
@@ -361,9 +361,8 @@ static bool w2p(const char *ip, const char *op) {
     fclose(fp);
     return 1;
   }
-  u32 l = lh(i[1]) + 8u; // RIFF header size
-  if(*i != hl(0x46464952u) || i[2] != hl(0x50424557u) || l < 28u) {
-    // RIFF, WEBP, minimum size
+  u32 l = LH(i + 4u) + 8u; // RIFF header size
+  if(LH(i) != LH("RIFF") || LH(i + 8u) != LH("WEBP") || l < 28u) {
     PR(k[2]);
     fclose(fp);
     return 1;
@@ -480,13 +479,12 @@ static bool w2p(const char *ip, const char *op) {
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
   {
-    const u32 x = lh(t32("4321"));
-    if(x == t32("1234"))
+    u8 x[4];
+    memcpy(x, (const u32[]){LH("4321")}, 4);
+    if(LH(x) == LH("1234"))
       P("Warning: %s\n", "Big-endian support is untested"); // TODO
-    else if(x != t32("4321")) {
-      char y[4];
-      memcpy(y, &x, 4);
-      P("ERROR: system is mixed-endian (%.4s)\n", y);
+    else if(LH(x) != LH("4321")) {
+      P("ERROR: system is mixed-endian (%.4s)\n", x);
       return 1;
     }
   }
