@@ -198,7 +198,7 @@ static int webpwrite(const u8 *d, size_t s, const WebPPicture *p) {
 static int progress(int percent, const WebPPicture *x) {
   (void)x;
   char h[64];
-  memset(h, '#', 64u);
+  for(u8 n = 0; n < 64;) h[n++] = '#';
   P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
   return 1;
 }
@@ -373,7 +373,7 @@ static bool w2p(const char *ip, const char *op) {
     fclose(fp);
     return 1;
   }
-  memcpy(x, i, 12u); // should optimize out
+  for(u8 n = 0; n < 12; n++) x[n] = i[n];
   if(
 #if defined __ANDROID__ && __ANDROID_API__ < 34
       l > 0x8000000bu // https://issuetracker.google.com/240139009
@@ -479,8 +479,7 @@ static bool w2p(const char *ip, const char *op) {
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
   {
-    u8 x[4];
-    memcpy(x, (const u32[]){LH("4321")}, 4);
+    const u8 *x = (const u8 *)(const u32[]){LH("4321")};
     if(LH(x) == LH("1234"))
       P("Warning: %s\n", "Big-endian support is untested"); // TODO
     else if(LH(x) != LH("4321")) {
@@ -544,8 +543,8 @@ int main(int sargc, char **argv) {
 	    "Out of memory");
 	return 1;
       }
-      memcpy(op + len, ".png", 5u);
-      memcpy(op, *argv, len); // the only real memcpy
+      memcpy(op, *argv, len);
+      for(u8 n = 0; n < 5; n++) (op + len)[n] = ".png"[n];
       ret = w2p(*argv, op) || ret;
       free(op);
     }
@@ -561,8 +560,8 @@ int main(int sargc, char **argv) {
 	    "Out of memory");
 	return 1;
       }
-      memcpy(op + len, ".webp", 6u);
-      memcpy(op, *argv, len); // the only real memcpy
+      memcpy(op, *argv, len);
+      for(u8 n = 0; n < 6; n++) (op + len)[n] = ".webp"[n];
       ret = p2w(*argv, op) || ret;
       free(op);
     }
