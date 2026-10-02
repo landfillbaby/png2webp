@@ -96,10 +96,10 @@
    return 1;
  }
  static bool p2w(const char *ip, const char *op) {
--  pngptr pi = {openr(ip), 0u};
-+  pngptr pi = {openr(ip, 0), 0u}; // TODO
+-  pngptr pi = {openr(ip), 0};
++  pngptr pi = {openr(ip, 0), 0}; // TODO
    if(!pi.fp) return 1;
-   u32 *b = 0;
+   uint32_t *b = 0;
    png_info *n = 0;
 @@ -349,7 +329,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
    return 0;
@@ -108,5 +108,5 @@
 -  FILE *fp = openr(ip);
 +  FILE *fp = openr(ip, 0); // TODO
    if(!fp) return 1;
-   u8 i[12];
+   uint8_t i[12];
    const char *k[] = {"Out of memory", "Broken config, file a bug report",

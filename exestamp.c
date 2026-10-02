@@ -18,11 +18,11 @@ STAMP: new Unix timestamp,\n\
   return -1;
 }
 int main(int argc, char **argv) {
-  u32 t; // uninitialized warnings are false :)
+  uint32_t t; // uninitialized warnings are false :)
   if(argc == 3) {
     if(!*argv[2] || isspace(*argv[2])) return help();
     char *n;
-    t = (u32)strtoull(argv[2], &n, 0);
+    t = (uint32_t)strtoull(argv[2], &n, 0);
     if(*n || errno) return help();
   } else if(argc != 2) return help();
   FILE *const f = fopen(argv[1], argc == 3 ? "rb+" : "rb");
@@ -30,22 +30,23 @@ int main(int argc, char **argv) {
     perror("ERROR opening file");
     return 1;
   }
-  u8 b[4];
+  uint8_t b[4];
 #define R(x) !fread(b, x, 1, f)
-#define S(x, y) fseek(f, x, SEEK_##y)
-  if(R(2) || LH16(b) != LH16("MZ") || S(60, SET) || R(4)
+  if(R(2) || LH16(b) != LH16("MZ") || fseek(f, 60, SEEK_SET) || R(4)
 #if LONG_MAX < 0xffffffff
-      || LH(b) > (u32)LONG_MAX
+      || LH(b) > (uint32_t)LONG_MAX
 #endif
-      || S(LH(b), SET) || R(4) || LH(b) != LH("PE\0") || S(4, CUR) || R(4)) {
+      || fseek(f, LH(b), SEEK_SET) || R(4) || LH(b) != LH("PE\0")
+      || fseek(f, 4, SEEK_CUR) || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
     return 1;
   }
+#define M ("old: %" PRIu32 "\nnew: %" PRIu32 "\n")
   if(argc == 3) {
-    printf("old: %" PRIu32 "\nnew: %" PRIu32 "\n", LH(b), t);
+    printf(M, LH(b), t);
 #define E perror("ERROR writing new timestamp")
-    if(S(-4, CUR) || !fwrite(HL(t), 4, 1, f)) {
+    if(fseek(f, -4, SEEK_CUR) || !fwrite(HL(t), 4, 1, f)) {
       E;
       fclose(f);
       return 1;
@@ -56,6 +57,6 @@ int main(int argc, char **argv) {
     }
   } else {
     fclose(f);
-    printf("%" PRIu32 "\n", LH(b));
+    printf(/* "%" PRIu32 "\n" */ M + sizeof(M) - sizeof(PRIu32) - 2u, LH(b));
   }
 }
