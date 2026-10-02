@@ -11,7 +11,6 @@
 #ifndef VERSION
 #define VERSION "v1.3.0-dev"
 #endif
-#include "le.h"
 #include <inttypes.h>
 #include <setjmp.h>
 #include <stdbool.h>
@@ -361,8 +360,10 @@ static bool w2p(const char *ip, const char *op) {
     fclose(fp);
     return 1;
   }
-  uint32_t l = LH(i + 4u) + 8u; // RIFF header size
-  if(LH(i) != LH("RIFF") || LH(i + 8u) != LH("WEBP") || l < 28u) {
+#define U(x) ((uint32_t)(*(x) | (uint32_t)(x)[1] << 8 \
+      | (uint32_t)(x)[2] << 16 | (uint32_t)(x)[3] << 24))
+  uint32_t l = U(i + 4u) + 8u; // RIFF header size
+  if(U(i) != U("RIFF") || U(i + 8u) != U("WEBP") || l < 28u) {
     PR(k[2]);
     fclose(fp);
     return 1;
@@ -479,10 +480,10 @@ static bool w2p(const char *ip, const char *op) {
 int main(int sargc, char **argv) {
   unsigned argc = (unsigned)sargc;
   {
-    const uint8_t *x = (const uint8_t *)(const uint32_t[]){LH("4321")};
-    if(LH(x) == LH("1234"))
+    const uint8_t *x = (const uint8_t *)(const uint32_t[]){U("4321")};
+    if(U(x) == U("1234"))
       P("Warning: %s\n", "Big-endian support is untested"); // TODO
-    else if(LH(x) != LH("4321")) {
+    else if(U(x) != U("4321")) {
       P("ERROR: system is mixed-endian (%.4s)\n", x);
       return 1;
     }

@@ -5,7 +5,7 @@ if __name__ == '__main__':
     f = f()
     f, t = f.add_argument, f.parse_args
     f('exe', help='Windows PE32(+) file')
-    def int_0(x: str) -> int: return int(x, 0)
+    def int_0(x: str) -> int: return int(x, 0) & 0xFFFFFFFF
     f('stamp', type=int_0, nargs='?', help='new Unix timestamp,'
       ' decimal, octal (leading 0o), or hexadecimal (leading 0x)')
     f, p = t(), p('<I')
@@ -21,7 +21,6 @@ if __name__ == '__main__':
         s(4, 1)
         if t is None: print(f())
         else:
-            t &= 0xFFFFFFFF
             print('old:', f())
             print('new:', t)
             s(-4, 1)

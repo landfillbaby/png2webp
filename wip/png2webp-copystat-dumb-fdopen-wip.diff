@@ -1,7 +1,7 @@
-@@ -12,12 +12,14 @@
+@@ -11,12 +11,14 @@
+ #ifndef VERSION
  #define VERSION "v1.3.0-dev"
  #endif
- #include "le.h"
 +#include <fcntl.h>
  #include <inttypes.h>
  #include <setjmp.h>
@@ -13,7 +13,7 @@
  #if SIZE_MAX < 0xffffffffu
  #error "size_t isn't at least 32-bit"
  #endif
-@@ -29,24 +31,16 @@
+@@ -28,24 +30,16 @@
  #define WIN32_LEAN_AND_MEAN
  #endif
  #include <Windows.h>
@@ -41,7 +41,7 @@
  static int help(void) {
    // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
    fputs("PNG2WebP " VERSION
-@@ -88,27 +82,20 @@ static bool exact, force, verbose, doprogress;
+@@ -87,27 +81,20 @@ static bool exact, force, verbose, doprogress;
  #define PW(x) P("ERROR writing: %s\n", x)
  #define ER perror("ERROR reading")
  #define EW perror("ERROR writing")
@@ -71,7 +71,7 @@
    return fp;
  }
  static inline void unlink_open_file(const char *path, int fd) {
-@@ -128,7 +115,6 @@ static FILE *openw(const char *op) {
+@@ -127,7 +114,6 @@ static FILE *openw(const char *op) {
    P("Encoding %s ...\n", op ? op : "<stdout>");
    if(!op) return stdout;
    FILE *fp;
@@ -79,7 +79,7 @@
    int fd = open(op, O_WRONLY | O_BINARY | O_CREAT | (force ? O_TRUNC : O_EXCL),
  #ifdef _WIN32
        S_IREAD | S_IWRITE
-@@ -146,12 +132,6 @@ static FILE *openw(const char *op) {
+@@ -145,12 +131,6 @@ static FILE *openw(const char *op) {
      close(fd);
      return 0;
    }
@@ -92,7 +92,7 @@
    return fp;
  }
  static void unlink_and_close(const char *path, FILE *fp) {
-@@ -203,7 +183,7 @@ static int progress(int percent, const WebPPicture *x) {
+@@ -202,7 +182,7 @@ static int progress(int percent, const WebPPicture *x) {
    return 1;
  }
  static bool p2w(const char *ip, const char *op) {
@@ -101,7 +101,7 @@
    if(!pi.fp) return 1;
    uint32_t *b = 0;
    png_info *n = 0;
-@@ -349,7 +329,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
+@@ -348,7 +328,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
    return 0;
  }
  static bool w2p(const char *ip, const char *op) {

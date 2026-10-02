@@ -2,7 +2,6 @@
 #ifndef _FILE_OFFSET_BITS
 #define _FILE_OFFSET_BITS 64
 #endif
-#include "le.h"
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -32,11 +31,13 @@ int main(int argc, char **argv) {
   }
   uint8_t b[4];
 #define R(x) !fread(b, x, 1, f)
-  if(R(2) || LH16(b) != LH16("MZ") || fseek(f, 60, SEEK_SET) || R(4)
+#define S(x) (uint16_t)(*(x) | (uint16_t)(x)[1] << 8)
+#define L(x) (uint32_t)(S(x) | (uint32_t)S(&(x)[2]) << 16)
+  if(R(2) || S(b) != S("MZ") || fseek(f, 60, SEEK_SET) || R(4)
 #if LONG_MAX < 0xffffffff
-      || LH(b) > (uint32_t)LONG_MAX
+      || L(b) > (uint32_t)LONG_MAX
 #endif
-      || fseek(f, LH(b), SEEK_SET) || R(4) || LH(b) != LH("PE\0")
+      || fseek(f, L(b), SEEK_SET) || R(4) || L(b) != L("PE\0")
       || fseek(f, 4, SEEK_CUR) || R(4)) {
     fputs("ERROR: Invalid Windows PE32(+) file\n", stderr);
     fclose(f);
@@ -44,9 +45,10 @@ int main(int argc, char **argv) {
   }
 #define M ("old: %" PRIu32 "\nnew: %" PRIu32 "\n")
   if(argc == 3) {
-    printf(M, LH(b), t);
+    printf(M, L(b), t);
 #define E perror("ERROR writing new timestamp")
-    if(fseek(f, -4, SEEK_CUR) || !fwrite(HL(t), 4, 1, f)) {
+    const uint8_t o[] = {t & 255u, t >> 8 & 255u, t >> 16 & 255u, t >> 24};
+    if(fseek(f, -4, SEEK_CUR) || !fwrite(o, 4, 1, f)) {
       E;
       fclose(f);
       return 1;
@@ -56,7 +58,7 @@ int main(int argc, char **argv) {
       return 1;
     }
   } else {
+    printf(/* "%" PRIu32 "\n" */ M + sizeof(M) - sizeof(PRIu32) - 2u, L(b));
     fclose(f);
-    printf(/* "%" PRIu32 "\n" */ M + sizeof(M) - sizeof(PRIu32) - 2u, LH(b));
   }
 }

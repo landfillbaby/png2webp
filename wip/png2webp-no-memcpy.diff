@@ -1,4 +1,4 @@
-@@ -543,7 +543,7 @@ int main(int sargc, char **argv) {
+@@ -544,7 +544,7 @@ int main(int sargc, char **argv) {
  	    "Out of memory");
  	return 1;
        }
@@ -7,7 +7,7 @@
        for(size_t n = 0; n < 5u; n++) (op + len)[n] = ".png"[n];
        ret = w2p(*argv, op) || ret;
        free(op);
-@@ -560,7 +560,7 @@ int main(int sargc, char **argv) {
+@@ -561,7 +561,7 @@ int main(int sargc, char **argv) {
  	    "Out of memory");
  	return 1;
        }

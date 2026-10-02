@@ -182,8 +182,7 @@ clean:
 	cd libpng && $(MAKE) $(AM_MAKEFLAGS) clean
 	cd libwebp && $(MAKE) $(AM_MAKEFLAGS) clean
 
-exestamp.c: le.h
-png2webp.c: p2wconf.h le.h
+png2webp.c: p2wconf.h
 libpng/png.c: libpng/config.h
 libwebp/src/dsp/enc.c: libwebp/src/webp/config.h
 zlib/crc32.c: zlib/zconf.h
