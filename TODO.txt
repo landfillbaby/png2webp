@@ -43,12 +43,42 @@ no config structs required just hardcode it
 
 minimize static build by making strings match some library one where possible
 
-parallelize more, multiple conversions at once?
-total rewrite of terminal output. for now just put filename in every message
+THREADING: parallelize more, multiple conversions at once?
+
+-j arg but should 0 mean -j=num_processors or -j=num_inputs?
+1st one probably better for multithreading, 2nd for multiprocessing (e.g. make)
+
 maybe remove all global vars?
 clang-tidy --checks='-*,cppcoreguidelines-avoid-non-const-global-variables'
-no setjmp/longjmp ??
+
+no setjmp/longjmp, just exit the thread :) https://narkive.com/XGCo9ua2.3
 use custom struct with png_create_(read|write)_struct and png_get_error_ptr
+
+total rewrite of terminal output
+
+for now just put filename in every stderr message
+/\v<(fputs|fprintf|perror|P[VRW]?|E[RW])>
+harder for perror
+snprintf ??
+replace with strerror?
+strerror_s/strerror_r for thread safety?
+how to tell if GNU strerror_r or not though?
+
+possible way of solving the progress bars
+static _Atomic unsigned percentage[thread_count];
+static char * _Atomic   paths     [thread_count];
+update each in the progress hook
+then in main thread, update all progress bars all at once every few seconds
+
+alternatively, just use a single progress bar
+and clear the line (spaces\r) at beginning of every stderr output
+needs its own thread that sleeps for idk 100ms? 10 times a second
+or just a function like before
+size_t percent_done = files_done * 100;
+for(size_t i = 0; i < thread_count; i++) percent_done += percentage[i];
+percent_done /= files_total;
+
+END THREADING
 
 'RIFFxxxxWEBPVP8[ LX]yyyy'
 :%s/U4 i\[3\]/U4 i[5]/g|%s/12u/20u/g|%s/0x8000000bu/0x80000013u/g

@@ -5,20 +5,14 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
+#include "png.h"
+#include "webp/decode.h"
+#include "webp/encode.h"
 #ifdef P2WCONF
 #include "p2wconf.h"
 #endif
 #ifndef VERSION
 #define VERSION "v1.3.0-dev"
-#endif
-#include <inttypes.h>
-#include <setjmp.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#if SIZE_MAX < 0xffffffffu
-#error "size_t isn't at least 32-bit"
 #endif
 #ifdef _WIN32
 #ifndef _CRT_NONSTDC_NO_WARNINGS
@@ -33,6 +27,15 @@
 #else
 #include <unistd.h>
 #endif
+#include <inttypes.h>
+#include <setjmp.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#if SIZE_MAX < 0xffffffffu
+#error "size_t isn't at least 32-bit"
+#endif
 #if !defined NOFOPENX && __STDC_VERSION__ < 201112L
 #define NOFOPENX
 #endif
@@ -43,9 +46,6 @@
 #define O_BINARY 0
 #endif
 #endif
-#include "png.h"
-#include "webp/decode.h"
-#include "webp/encode.h"
 static int help(void) {
   // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
   fputs("PNG2WebP " VERSION
@@ -80,7 +80,7 @@ png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
 --: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
-static bool exact, force, verbose, doprogress;
+static bool force, verbose, doprogress;
 #define P(...) fprintf(stderr, __VA_ARGS__)
 #define PV(...) (verbose ? P(__VA_ARGS__) : 0)
 #define PR(x) P("ERROR reading: %s\n", x)
@@ -110,7 +110,7 @@ static FILE *openr(const char *ip) {
 #endif
   return fp;
 }
-static inline void unlink_open_file(const char *path, int fd) {
+static void unlink_open_file(const char *path, int fd) {
 #ifdef __FreeBSD__
   funlinkat(AT_FDCWD, path, fd, 0); // why isn't this in POSIX?
 #elif defined _WIN32
@@ -160,6 +160,7 @@ static void unlink_and_close(const char *path, FILE *fp) {
 typedef struct {
   FILE *const fp;
   size_t len;
+  // TODO: const char *const path;
 } pngptr;
 static void pngread(png_struct *p, uint8_t *d, size_t s) {
   pngptr *i = png_get_io_ptr(p);
@@ -201,7 +202,18 @@ static int progress(int percent, const WebPPicture *x) {
   P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
   return 1;
 }
-static bool p2w(const char *ip, const char *op) {
+static bool init_webpconfig(WebPConfig *c, bool exact) {
+  if(!WebPConfigPreset(c, WEBP_PRESET_ICON, 100)) {
+    P("ERROR: %s\n", "Broken config, file a bug report");
+    return 1;
+  }
+  c->lossless = 1;
+  c->method = 6;
+  c->image_hint = WEBP_HINT_GRAPH; // init VP8LBitWriter to 8 bpp
+  c->exact = exact;
+  return 0;
+}
+static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
   pngptr pi = {openr(ip), 0};
   if(!pi.fp) return 1;
   uint32_t *b = 0;
@@ -292,16 +304,6 @@ static bool p2w(const char *ip, const char *op) {
       width, height, pi.len, (double)pi.len * 8u / (width * height),
       (unsigned)bitdepth, f[(unsigned)colortype],
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
-  WebPConfig c;
-  if(!WebPConfigPreset(&c, WEBP_PRESET_ICON, 100)) {
-    PW(k[3]);
-    free(b);
-    return 1;
-  }
-  c.lossless = 1;
-  c.method = 6;
-  c.image_hint = WEBP_HINT_GRAPH; // init VP8LBitWriter to 8 bpp
-  c.exact = exact;
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
       .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = openw(op),
@@ -313,7 +315,7 @@ static bool p2w(const char *ip, const char *op) {
   if(doprogress) P("[%-64.*s] %u%%", 0, "", 0u);
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
-  int r = WebPEncode(&c, &o);
+  int r = WebPEncode(c, &o);
   if(doprogress) fputs("\n", stderr);
   if(!r) {
     PW(k[(unsigned)o.error_code - 1u]);
@@ -488,7 +490,7 @@ int main(int sargc, char **argv) {
       return 1;
     }
   }
-  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0;
+  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0;
 #ifdef USEGETOPT
   for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
     switch(c)
@@ -525,8 +527,11 @@ int main(int sargc, char **argv) {
     if(usestdin) setmode(0, O_BINARY);
     if(usestdout) setmode(1, O_BINARY);
 #endif
-    if(!reverse && !doprogress) doprogress = isatty(2);
-    return (reverse ? w2p : p2w)(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
+    if(reverse) return w2p(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
+    WebPConfig c;
+    if(init_webpconfig(&c, exact)) return 1;
+    if(!doprogress) doprogress = isatty(2);
+    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c);
   }
   if(!argc) return help();
   bool ret = 0;
@@ -550,6 +555,8 @@ int main(int sargc, char **argv) {
       free(op);
     }
   } else {
+    WebPConfig c;
+    if(init_webpconfig(&c, exact)) return 1;
     if(!doprogress) doprogress = isatty(2);
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
@@ -563,7 +570,7 @@ int main(int sargc, char **argv) {
       }
       memcpy(op, *argv, len);
       for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
-      ret = p2w(*argv, op) || ret;
+      ret = p2w(*argv, op, &c) || ret;
       free(op);
     }
   }

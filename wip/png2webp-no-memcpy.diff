@@ -1,4 +1,4 @@
-@@ -544,7 +544,7 @@ int main(int sargc, char **argv) {
+@@ -549,7 +549,7 @@ int main(int sargc, char **argv) {
  	    "Out of memory");
  	return 1;
        }
@@ -7,12 +7,12 @@
        for(size_t n = 0; n < 5u; n++) (op + len)[n] = ".png"[n];
        ret = w2p(*argv, op) || ret;
        free(op);
-@@ -561,7 +561,7 @@ int main(int sargc, char **argv) {
+@@ -568,7 +568,7 @@ int main(int sargc, char **argv) {
  	    "Out of memory");
  	return 1;
        }
 -      memcpy(op, *argv, len);
 +      for(size_t n = 0; n < len; n++) op[n] = argv[0][n];
        for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
-       ret = p2w(*argv, op) || ret;
+       ret = p2w(*argv, op, &c) || ret;
        free(op);

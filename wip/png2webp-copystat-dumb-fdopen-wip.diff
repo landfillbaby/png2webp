@@ -1,6 +1,11 @@
-@@ -11,12 +11,14 @@
- #ifndef VERSION
- #define VERSION "v1.3.0-dev"
+@@ -22,30 +22,24 @@
+ #define WIN32_LEAN_AND_MEAN
+ #endif
+ #include <Windows.h>
+-#include <fcntl.h>
+ #include <io.h>
+ #else
+ #include <unistd.h>
  #endif
 +#include <fcntl.h>
  #include <inttypes.h>
@@ -13,35 +18,20 @@
  #if SIZE_MAX < 0xffffffffu
  #error "size_t isn't at least 32-bit"
  #endif
-@@ -28,24 +30,16 @@
- #define WIN32_LEAN_AND_MEAN
- #endif
- #include <Windows.h>
--#include <fcntl.h>
- #include <io.h>
- #else
- #include <unistd.h>
- #endif
 -#if !defined NOFOPENX && __STDC_VERSION__ < 201112L
 -#define NOFOPENX
 -#endif
 -#ifdef NOFOPENX
 -#include <fcntl.h>
 -#include <sys/stat.h>
--#ifndef O_BINARY
--#define O_BINARY 0
+ #ifndef O_BINARY
+ #define O_BINARY 0
+ #endif
 -#endif
--#endif
- #include "png.h"
- #include "webp/decode.h"
- #include "webp/encode.h"
-+#ifndef O_BINARY
-+#define O_BINARY 0
-+#endif
  static int help(void) {
    // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
    fputs("PNG2WebP " VERSION
-@@ -87,27 +81,20 @@ static bool exact, force, verbose, doprogress;
+@@ -87,27 +81,20 @@ static bool force, verbose, doprogress;
  #define PW(x) P("ERROR writing: %s\n", x)
  #define ER perror("ERROR reading")
  #define EW perror("ERROR writing")
@@ -70,7 +60,7 @@
 -#endif
    return fp;
  }
- static inline void unlink_open_file(const char *path, int fd) {
+ static void unlink_open_file(const char *path, int fd) {
 @@ -127,7 +114,6 @@ static FILE *openw(const char *op) {
    P("Encoding %s ...\n", op ? op : "<stdout>");
    if(!op) return stdout;
@@ -92,16 +82,16 @@
    return fp;
  }
  static void unlink_and_close(const char *path, FILE *fp) {
-@@ -202,7 +182,7 @@ static int progress(int percent, const WebPPicture *x) {
-   return 1;
+@@ -214,7 +194,7 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
+   return 0;
  }
- static bool p2w(const char *ip, const char *op) {
+ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
 -  pngptr pi = {openr(ip), 0};
 +  pngptr pi = {openr(ip, 0), 0}; // TODO
    if(!pi.fp) return 1;
    uint32_t *b = 0;
    png_info *n = 0;
-@@ -348,7 +328,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
+@@ -350,7 +330,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
    return 0;
  }
  static bool w2p(const char *ip, const char *op) {
