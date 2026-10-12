@@ -31,7 +31,7 @@
  static int help(void) {
    // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
    fputs("PNG2WebP " VERSION
-@@ -87,27 +81,20 @@ static bool force, verbose, doprogress;
+@@ -87,27 +81,20 @@ static bool force, verbose; // TODO: no global vars
  #define PW(x) P("ERROR writing: %s\n", x)
  #define ER perror("ERROR reading")
  #define EW perror("ERROR writing")
@@ -82,16 +82,16 @@
    return fp;
  }
  static void unlink_and_close(const char *path, FILE *fp) {
-@@ -214,7 +194,7 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
-   return 0;
+@@ -215,7 +195,7 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
  }
- static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
+ static bool p2w(const char *ip, const char *op, const WebPConfig *c,
+     bool doprogress) {
 -  pngptr pi = {openr(ip), 0};
 +  pngptr pi = {openr(ip, 0), 0}; // TODO
    if(!pi.fp) return 1;
    uint32_t *b = 0;
    png_info *n = 0;
-@@ -350,7 +330,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
+@@ -349,7 +329,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
    return 0;
  }
  static bool w2p(const char *ip, const char *op) {
@@ -99,4 +99,4 @@
 +  FILE *fp = openr(ip, 0); // TODO
    if(!fp) return 1;
    uint8_t i[12];
-   const char *k[] = {"Out of memory", "Broken config, file a bug report",
+   if(!fread(i, 12, 1, fp)) {

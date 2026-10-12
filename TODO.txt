@@ -45,6 +45,10 @@ minimize static build by making strings match some library one where possible
 
 THREADING: parallelize more, multiple conversions at once?
 
+use thread pools
+Windows: https://learn.microsoft.com/en-us/windows/win32/procthread/using-the-thread-pool-functions
+POSIX: https://github.com/jonhoo/pthread_pool
+
 -j arg but should 0 mean -j=num_processors or -j=num_inputs?
 1st one probably better for multithreading, 2nd for multiprocessing (e.g. make)
 

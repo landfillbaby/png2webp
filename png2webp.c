@@ -80,7 +80,7 @@ png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
 --: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
-static bool force, verbose, doprogress;
+static bool force, verbose; // TODO: no global vars
 #define P(...) fprintf(stderr, __VA_ARGS__)
 #define PV(...) (verbose ? P(__VA_ARGS__) : 0)
 #define PR(x) P("ERROR reading: %s\n", x)
@@ -213,18 +213,12 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
   c->exact = exact;
   return 0;
 }
-static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
+static bool p2w(const char *ip, const char *op, const WebPConfig *c,
+    bool doprogress) {
   pngptr pi = {openr(ip), 0};
   if(!pi.fp) return 1;
   uint32_t *b = 0;
   png_info *n = 0;
-  const char *k[] = {"Out of memory",
-      "???", // oom flushing bitstream, unused in libwebp
-      "???", // null param
-      "Broken config, file a bug report",
-      "???", // image too big (checked on PNG input)
-      "???", "???", "I/O error", "???", // lossy stuff
-      "???"}; // canceled
   png_struct *p
       = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
 #define P2W_CLOSE \
@@ -235,13 +229,11 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
     return 1; \
   } while(0)
   if(!p || !(n = png_create_info_struct(p))) {
-    PR(*k);
+    PR("Out of memory");
     P2W_CLOSE;
   }
   if(setjmp(png_jmpbuf(p))) P2W_CLOSE;
-#define E(x) png_set_##x(p)
-#define S(x, ...) png_set_##x(p, __VA_ARGS__)
-  S(read_fn, &pi, pngread);
+  png_set_read_fn(p, &pi, pngread);
   png_read_info(p, n);
   uint32_t width, height;
   int bitdepth, colortype;
@@ -259,20 +251,20 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
     if(gamma != 45455)
       P("Warning: Nonstandard gamma: %" PRIu32 ".%05" PRIu32 "\n",
 	  (uint32_t)gamma / 100000u, (uint32_t)gamma % 100000u);
-    S(gamma_fixed, 220000, gamma);
+    png_set_gamma_fixed(p, 220000, gamma);
   }
-  E(scale_16);
-  E(expand);
-  E(gray_to_rgb);
-  E(packing);
+  png_set_scale_16(p);
+  png_set_expand(p);
+  png_set_gray_to_rgb(p);
+  png_set_packing(p);
   if(!*(uint8_t *)(uint16_t[]){1}) { // TODO: test big-endian
-    E(swap_alpha);
-    S(add_alpha, 255, PNG_FILLER_BEFORE);
+    png_set_swap_alpha(p);
+    png_set_add_alpha(p, 255, PNG_FILLER_BEFORE);
   } else {
-    E(bgr);
-    S(add_alpha, 255, PNG_FILLER_AFTER);
+    png_set_bgr(p);
+    png_set_add_alpha(p, 255, PNG_FILLER_AFTER);
   }
-  unsigned passes = (unsigned)E(interlace_handling);
+  unsigned passes = (unsigned)png_set_interlace_handling(p);
   png_read_update_info(p, n);
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
@@ -284,7 +276,7 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
 #endif
   b = malloc((size_t)4 * width * height);
   if(!b) {
-    PR(*k);
+    PR("Out of memory");
     P2W_CLOSE;
   }
   for(unsigned x = passes; x; x--) {
@@ -305,9 +297,9 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
       (unsigned)bitdepth, f[(unsigned)colortype],
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
   WebPAuxStats s;
-  WebPPicture o = {1, .width = (int)width, (int)height, .argb = b,
-      .argb_stride = (int)width, .writer = webpwrite, .custom_ptr = openw(op),
-      .stats = verbose ? &s : 0, .progress_hook = doprogress ? progress : 0};
+  WebPPicture o = {1, .width = (int)width, (int)height, .argb = b, (int)width,
+      .writer = webpwrite, .custom_ptr = openw(op), .stats = verbose ? &s : 0,
+      .progress_hook = doprogress ? progress : 0};
   if(!o.custom_ptr) {
     free(b);
     return 1;
@@ -318,7 +310,14 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
   int r = WebPEncode(c, &o);
   if(doprogress) fputs("\n", stderr);
   if(!r) {
-    PW(k[(unsigned)o.error_code - 1u]);
+    switch(o.error_code) {
+      case VP8_ENC_ERROR_OUT_OF_MEMORY: PW("Out of memory"); break;
+      case VP8_ENC_ERROR_INVALID_CONFIGURATION:
+	PW("Broken config, file a bug report");
+	break;
+      case VP8_ENC_ERROR_BAD_WRITE: PW("I/O error"); break;
+      default: PW("???");
+    }
     unlink_and_close(op, o.custom_ptr);
     free(b);
     return 1;
@@ -353,37 +352,28 @@ static bool w2p(const char *ip, const char *op) {
   FILE *fp = openr(ip);
   if(!fp) return 1;
   uint8_t i[12];
-  const char *k[] = {"Out of memory", "Broken config, file a bug report",
-      "Invalid WebP", "???", "???", "???", "I/O error"};
-  // ^ unsupported feature, suspended, canceled
-#define R(x, y) !fread(x, y, 1, fp)
-  if(R(i, 12)) {
-    PR(k[6]);
+  if(!fread(i, 12, 1, fp)) {
+    PR("I/O error");
     fclose(fp);
     return 1;
   }
 #define U(x) ((uint32_t)(*(x) | (uint32_t)(x)[1] << 8 \
       | (uint32_t)(x)[2] << 16 | (uint32_t)(x)[3] << 24))
   uint32_t l = U(i + 4u) + 8u; // RIFF header size
-  if(U(i) != U("RIFF") || U(i + 8u) != U("WEBP") || l < 28u) {
-    PR(k[2]);
+  if(U(i) != U("RIFF") || U(i + 8u) != U("WEBP") || -~l < 29u) {
+    PR("Invalid WebP");
     fclose(fp);
     return 1;
   }
   uint8_t *x = malloc(l);
   if(!x) {
-    PR(*k);
+    PR("Out of memory");
     fclose(fp);
     return 1;
   }
   for(size_t n = 0; n < 12u; n++) x[n] = i[n];
-  if(
-#if defined __ANDROID__ && __ANDROID_API__ < 34
-      l > 0x8000000bu // https://issuetracker.google.com/240139009
-	  ? R(x + 12u, 0x7fffffffu) || R(x + 0x8000000bu, l - 0x8000000bu) :
-#endif
-	  R(x + 12u, l - 12u)) {
-    PR(k[6]);
+  if(!fread(x + 12u, l - 12u, 1, fp)) {
+    PR("I/O error");
     fclose(fp);
     free(x);
     return 1;
@@ -392,11 +382,17 @@ static bool w2p(const char *ip, const char *op) {
   WebPBitstreamFeatures o;
   VP8StatusCode r = WebPGetFeatures(x, l, &o);
   if(r) {
-    PR(k[(unsigned)r - 1u]);
+    switch(r) {
+      case VP8_STATUS_INVALID_PARAM:
+	PR("Broken config, file a bug report");
+	break;
+      case VP8_STATUS_BITSTREAM_ERROR:
+      case VP8_STATUS_NOT_ENOUGH_DATA: PR("Invalid WebP"); break;
+      default: PR("???");
+    }
     free(x);
     return 1;
   }
-#define V ((unsigned)o.format)
 #define A (!!o.has_alpha)
 #define B ((uint32_t)3 + A)
 #define L ((size_t)B * W * H)
@@ -406,7 +402,7 @@ static bool w2p(const char *ip, const char *op) {
 #else
   const char *f[] = {"undefined/mixed", "lossy", "lossless"};
 #define FMTSTR "Format: %s\n"
-#define FMTARG , f[V]
+#define FMTARG , f[(unsigned)o.format]
 #endif
   PV("Input info:\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
      " bytes (%.15g bpp)\nUses alpha: %s\n" FMTSTR,
@@ -417,7 +413,7 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
 #ifdef LOSSYISERROR
-  if(V != 2u) {
+  if(o.format != 2) {
     PR("Unsupported feature: lossy compression");
     free(x);
     return 1;
@@ -425,12 +421,12 @@ static bool w2p(const char *ip, const char *op) {
 #endif
   uint8_t *b = malloc(L);
   if(!b) {
-    PR(*k);
+    PR("Out of memory");
     free(x);
     return 1;
   }
   if(!(A ? WebPDecodeRGBAInto : WebPDecodeRGBInto)(x, l, b, L, (int)(B * W))) {
-    PR(k[2]);
+    PR("Invalid WebP");
     free(b);
     free(x);
     return 1;
@@ -452,15 +448,15 @@ static bool w2p(const char *ip, const char *op) {
     return 1; \
   } while(0)
   if(!p || !(n = png_create_info_struct(p))) {
-    PW(*k);
+    PW("Out of memory");
     W2P_RM;
   }
   if(setjmp(png_jmpbuf(p))) W2P_RM;
-  S(write_fn, &pi, pngwrite, pngflush);
-  S(filter, 0, PNG_ALL_FILTERS);
-  S(compression_level, 9);
-  // S(compression_memlevel, 9);
-  S(IHDR, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
+  png_set_write_fn(p, &pi, pngwrite, pngflush);
+  png_set_filter(p, 0, PNG_ALL_FILTERS);
+  png_set_compression_level(p, 9);
+  // png_set_compression_memlevel(p, 9);
+  png_set_IHDR(p, n, W, H, 8, A ? 6 : 2, 0, 0, 0);
   png_write_info(p, n);
   uint8_t *w = b;
   for(unsigned y = H; y; y--) {
@@ -490,7 +486,8 @@ int main(int sargc, char **argv) {
       return 1;
     }
   }
-  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0;
+  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0,
+       doprogress = 0;
 #ifdef USEGETOPT
   for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
     switch(c)
@@ -518,7 +515,7 @@ int main(int sargc, char **argv) {
   argc -= (unsigned)optind;
   argv += (unsigned)optind;
 #endif
-#define PIPEARG(x) (argc <= x || (*argv[x] == '-' && !argv[x][1]))
+#define PIPEARG(x) (argc <= (x) || (*argv[x] == '-' && !argv[x][1]))
   if(pipe) {
     if(argc > 2u || ((usestdin = PIPEARG(0u)) && isatty(0))
 	|| ((usestdout = PIPEARG(1u)) && isatty(1)))
@@ -531,12 +528,12 @@ int main(int sargc, char **argv) {
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
     if(!doprogress) doprogress = isatty(2);
-    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c);
+    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c, doprogress);
   }
   if(!argc) return help();
   bool ret = 0;
-#define K(x, y) (argv[0][len - x] == y)
-#define J(x, y) (K(x, *y) || K(x, y[1]))
+#define K(x, y) (argv[0][len - (x)] == (y))
+#define J(x, y) (K(x, *(y)) || K(x, (y)[1]))
   if(reverse) {
     for(; argc; argc--, argv++) {
       size_t len = strlen(*argv);
@@ -570,7 +567,7 @@ int main(int sargc, char **argv) {
       }
       memcpy(op, *argv, len);
       for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
-      ret = p2w(*argv, op, &c) || ret;
+      ret = p2w(*argv, op, &c, doprogress) || ret;
       free(op);
     }
   }
