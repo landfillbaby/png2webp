@@ -41,7 +41,7 @@ exestampexec := ./exestamp.py
 endif
 png2webp png2webp_dynamic: CPPFLAGS := -Izlib -Ilibpng -Ilibwebp -Ilibwebp/src \
 	-DWEBP_REDUCE_CSP -DWEBP_REDUCE_SIZE -DHAVE_CONFIG_H -DP2WCONF \
-	$(CPPFLAGS)
+	-fopenmp $(CPPFLAGS)
 png2webp: png2webp.c libpng/png.c libpng/pngerror.c libpng/pngget.c \
 	libpng/pngmem.c libpng/pngpread.c libpng/pngread.c libpng/pngrio.c \
 	libpng/pngrtran.c libpng/pngrutil.c libpng/pngset.c libpng/pngtrans.c \
