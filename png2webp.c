@@ -76,7 +76,13 @@ png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
 -e: Keep RGB data on pixels where alpha is 0. Always enabled for `-r`.\n\
 -f: Force overwrite of output files (has no effect on stdout).\n\
 -v: Be verbose.\n\
+"
+#ifdef DOPROGRESS
+"
 -t: Print a progress bar even when stderr isn't a terminal (not for `-r`).\n\
+"
+#endif
+"\
 --: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
@@ -195,6 +201,7 @@ static void pngwarn(png_struct *p, const char *s) {
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
 }
+#ifdef DOPROGRESS
 static int progress(int percent, const WebPPicture *x) {
   (void)x;
   char h[64];
@@ -202,6 +209,7 @@ static int progress(int percent, const WebPPicture *x) {
   P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
   return 1;
 }
+#endif
 static bool init_webpconfig(WebPConfig *c, bool exact) {
   if(!WebPConfigPreset(c, WEBP_PRESET_ICON, 100)) {
     P("ERROR: %s\n", "Broken config, file a bug report");
@@ -213,8 +221,11 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
   c->exact = exact;
   return 0;
 }
-static bool p2w(const char *ip, const char *op, const WebPConfig *c,
-    bool doprogress) {
+static bool p2w(const char *ip, const char *op, const WebPConfig *c
+#ifdef DOPROGRESS
+    , bool doprogress
+#endif
+    ) {
   pngptr pi = {openr(ip), 0};
   if(!pi.fp) return 1;
   uint32_t *b = 0;
@@ -299,16 +310,23 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c,
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b, (int)width,
       .writer = webpwrite, .custom_ptr = openw(op), .stats = verbose ? &s : 0,
-      .progress_hook = doprogress ? progress : 0};
+#ifdef DOPROGRESS
+      .progress_hook = doprogress ? progress : 0,
+#endif
+      };
   if(!o.custom_ptr) {
     free(b);
     return 1;
   }
+#ifdef DOPROGRESS
   if(doprogress) P("[%-64.*s] %u%%", 0, "", 0u);
+#endif
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
   int r = WebPEncode(c, &o);
+#ifdef DOPROGRESS
   if(doprogress) fputs("\n", stderr);
+#endif
   if(!r) {
     switch(o.error_code) {
       case VP8_ENC_ERROR_OUT_OF_MEMORY: PW("Out of memory"); break;
@@ -486,10 +504,16 @@ int main(int sargc, char **argv) {
       return 1;
     }
   }
-  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0,
-       doprogress = 0;
+  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0;
+#ifdef DOPROGRESS
+  bool doprogress = 0;
+#endif
 #ifdef USEGETOPT
-  for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
+  for(int c; (c = getopt(sargc, argv, ":prefv"
+#ifdef DOPROGRESS
+	  "t"
+#endif
+	  )) != -1;)
     switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
@@ -508,7 +532,9 @@ int main(int sargc, char **argv) {
       case 'e': exact = 1; break;
       case 'f': force = 1; break;
       case 'v': verbose = 1; break;
+#ifdef DOPROGRESS
       case 't': doprogress = 1; break;
+#endif
       default: return help();
     }
 #ifdef USEGETOPT
@@ -527,48 +553,62 @@ int main(int sargc, char **argv) {
     if(reverse) return w2p(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
+#ifdef DOPROGRESS
     if(!doprogress) doprogress = isatty(2);
     return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c, doprogress);
+#else
+    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c);
+#endif
   }
   if(!argc) return help();
   bool ret = 0;
-#define K(x, y) (argv[0][len - (x)] == (y))
+#define K(x, y) (argv[i][len - (x)] == (y))
 #define J(x, y) (K(x, *(y)) || K(x, (y)[1]))
   if(reverse) {
-    for(; argc; argc--, argv++) {
-      size_t len = strlen(*argv);
+#pragma omp parallel for // TODO: pthread, fix stderr output
+    for(unsigned i = 0; i < argc; i++) {
+      size_t len = strlen(argv[i]);
       if(len > 4u && K(5u, '.') && J(4u, "wW") && J(3u, "eE") && J(2u, "bB")
 	  && J(1u, "pP"))
 	len -= 5u;
       char *op = malloc(len + 5u);
       if(!op) {
-	P("ERROR adding %s extension to %s: %s\n", ".png", *argv,
+	P("ERROR adding %s extension to %s: %s\n", ".png", argv[i],
 	    "Out of memory");
-	return 1;
+	ret = 1;
+      } else {
+	memcpy(op, argv[i], len);
+	for(size_t n = 0; n < 5u; n++) (op + len)[n] = ".png"[n];
+	ret = w2p(argv[i], op) || ret;
+	free(op);
       }
-      memcpy(op, *argv, len);
-      for(size_t n = 0; n < 5u; n++) (op + len)[n] = ".png"[n];
-      ret = w2p(*argv, op) || ret;
-      free(op);
     }
   } else {
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
+#ifdef DOPROGRESS
     if(!doprogress) doprogress = isatty(2);
-    for(; argc; argc--, argv++) {
-      size_t len = strlen(*argv);
+#endif
+#pragma omp parallel for // TODO: ditto
+    for(unsigned i = 0; i < argc; i++) {
+      size_t len = strlen(argv[i]);
       if(len > 3u && K(4u, '.') && J(3u, "pP") && J(2u, "nN") && J(1u, "gG"))
 	len -= 4u;
       char *op = malloc(len + 6u);
       if(!op) {
-	P("ERROR adding %s extension to %s: %s\n", ".webp", *argv,
+	P("ERROR adding %s extension to %s: %s\n", ".webp", argv[i],
 	    "Out of memory");
-	return 1;
+	ret = 1;
+      } else {
+	memcpy(op, argv[i], len);
+	for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
+	ret = p2w(argv[i], op, &c
+#ifdef DOPROGRESS
+	    , doprogress
+#endif
+	    ) || ret;
+	free(op);
       }
-      memcpy(op, *argv, len);
-      for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
-      ret = p2w(*argv, op, &c, doprogress) || ret;
-      free(op);
     }
   }
   return ret;
