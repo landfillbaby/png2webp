@@ -46,6 +46,26 @@
 #define O_BINARY 0
 #endif
 #endif
+#define P(...) fprintf(stderr, __VA_ARGS__)
+#define PV(...) (verbose ? P(__VA_ARGS__) : 0)
+#define PR(x) P("ERROR reading: %s\n", x)
+#define PW(x) P("ERROR writing: %s\n", x)
+#define ER perror("ERROR reading")
+#define EW perror("ERROR writing")
+#ifdef DOPROGRESS
+#define DOPROGRESS_CHAR "t"
+#define DOPROGRESS_CHK (doprogress = doprogress || isatty(2))
+static int progress(int percent, const WebPPicture *x) {
+  (void)x;
+  char h[64];
+  for(size_t n = 0; n < 64u;) h[n++] = '#';
+  P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
+  return 1;
+}
+#else
+#define DOPROGRESS_CHAR
+#define DOPROGRESS_CHK ((void)0)
+#endif
 static int help(void) {
   // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
   fputs("PNG2WebP " VERSION
@@ -64,8 +84,8 @@ static int help(void) {
       "\n\
 \n\
 Usage:\n\
-png2webp [-refvt] [--] INFILE ...\n\
-png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
+png2webp [-refv" DOPROGRESS_CHAR "] [--] INFILE ...\n\
+png2webp -p[refv" DOPROGRESS_CHAR "] [--] [INFILE [OUTFILE]]\n\
 \n\
 -p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
@@ -75,24 +95,15 @@ png2webp -p[refvt] [--] [INFILE [OUTFILE]]\n\
 -r: Convert from WebP to PNG instead.\n\
 -e: Keep RGB data on pixels where alpha is 0. Always enabled for `-r`.\n\
 -f: Force overwrite of output files (has no effect on stdout).\n\
--v: Be verbose.\n\
-"
+-v: Be verbose.\n"
 #ifdef DOPROGRESS
-"
--t: Print a progress bar even when stderr isn't a terminal (not for `-r`).\n\
-"
+"-" DOPROGRESS_CHAR
+": Print a progress bar even when stderr isn't a terminal (not for `-r`).\n"
 #endif
-"\
---: Explicitly stop parsing options.\n", stderr);
+"--: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
 static bool force, verbose; // TODO: no global vars
-#define P(...) fprintf(stderr, __VA_ARGS__)
-#define PV(...) (verbose ? P(__VA_ARGS__) : 0)
-#define PR(x) P("ERROR reading: %s\n", x)
-#define PW(x) P("ERROR writing: %s\n", x)
-#define ER perror("ERROR reading")
-#define EW perror("ERROR writing")
 static FILE *openr(const char *ip) {
   P("Decoding %s ...\n", ip ? ip : "<stdin>");
   if(!ip) return stdin;
@@ -201,15 +212,6 @@ static void pngwarn(png_struct *p, const char *s) {
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
 }
-#ifdef DOPROGRESS
-static int progress(int percent, const WebPPicture *x) {
-  (void)x;
-  char h[64];
-  for(size_t n = 0; n < 64u;) h[n++] = '#';
-  P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
-  return 1;
-}
-#endif
 static bool init_webpconfig(WebPConfig *c, bool exact) {
   if(!WebPConfigPreset(c, WEBP_PRESET_ICON, 100)) {
     P("ERROR: %s\n", "Broken config, file a bug report");
@@ -509,11 +511,7 @@ int main(int sargc, char **argv) {
   bool doprogress = 0;
 #endif
 #ifdef USEGETOPT
-  for(int c; (c = getopt(sargc, argv, ":prefv"
-#ifdef DOPROGRESS
-	  "t"
-#endif
-	  )) != -1;)
+  for(int c; (c = getopt(sargc, argv, ":prefv" DOPROGRESS_CHAR)) != -1;)
     switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
@@ -533,7 +531,7 @@ int main(int sargc, char **argv) {
       case 'f': force = 1; break;
       case 'v': verbose = 1; break;
 #ifdef DOPROGRESS
-      case 't': doprogress = 1; break;
+      case *(DOPROGRESS_CHAR): doprogress = 1; break;
 #endif
       default: return help();
     }
@@ -553,12 +551,12 @@ int main(int sargc, char **argv) {
     if(reverse) return w2p(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
+    DOPROGRESS_CHK;
+    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c
 #ifdef DOPROGRESS
-    if(!doprogress) doprogress = isatty(2);
-    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c, doprogress);
-#else
-    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c);
+	, doprogress
 #endif
+	);
   }
   if(!argc) return help();
   bool ret = 0;
@@ -586,9 +584,7 @@ int main(int sargc, char **argv) {
   } else {
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
-#ifdef DOPROGRESS
-    if(!doprogress) doprogress = isatty(2);
-#endif
+    DOPROGRESS_CHK;
 #pragma omp parallel for // TODO: ditto
     for(unsigned i = 0; i < argc; i++) {
       size_t len = strlen(argv[i]);
