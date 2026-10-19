@@ -110,19 +110,18 @@ static FILE *openr(const char *ip) {
 #endif
   return fp;
 }
-static void unlink_open_file(const char *path, int fd) {
-#ifdef __FreeBSD__
-  funlinkat(AT_FDCWD, path, fd, 0); // why isn't this in POSIX?
+#ifdef __FreeBSD__ // why isn't this in POSIX?
+#define UNLINK(path, fd) funlinkat(AT_FDCWD, (path), (fd), 0)
 #elif defined _WIN32
-  (void)path;
-  FILE_DISPOSITION_INFO i = {.DeleteFile = TRUE};
-  SetFileInformationByHandle((HANDLE)_get_osfhandle(fd), FileDispositionInfo,
-      &i, sizeof(i));
+#define UNLINK(unused, fd) \
+  do { \
+    FILE_DISPOSITION_INFO i = {.DeleteFile = TRUE}; \
+    SetFileInformationByHandle((HANDLE)_get_osfhandle(fd), \
+	FileDispositionInfo, &i, sizeof(i)); \
+  } while(0)
 #else // TODO: find fixes for other OSes
-  (void)fd;
-  unlink(path); // TOCTOU race condition :(
+#define UNLINK(path, unused) unlink(path) // TOCTOU race condition :(
 #endif
-}
 static FILE *openw(const char *op) {
   P("Encoding %s ...\n", op ? op : "<stdout>");
   if(!op) return stdout;
@@ -141,7 +140,7 @@ static FILE *openw(const char *op) {
   }
   if(!(fp = fdopen(fd, "wb"))) {
     EW;
-    unlink_open_file(op, fd);
+    UNLINK(op, fd);
     close(fd);
     return 0;
   }
@@ -154,7 +153,7 @@ static FILE *openw(const char *op) {
   return fp;
 }
 static void unlink_and_close(const char *path, FILE *fp) {
-  if(path) unlink_open_file(path, fileno(fp));
+  if(path) UNLINK(path, fileno(fp));
   fclose(fp);
 }
 typedef struct {
