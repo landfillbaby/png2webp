@@ -113,12 +113,9 @@ static FILE *openr(const char *ip) {
 #ifdef __FreeBSD__ // why isn't this in POSIX?
 #define UNLINK(path, fd) funlinkat(AT_FDCWD, (path), (fd), 0)
 #elif defined _WIN32
-#define UNLINK(unused, fd) \
-  do { \
-    FILE_DISPOSITION_INFO i = {.DeleteFile = TRUE}; \
-    SetFileInformationByHandle((HANDLE)_get_osfhandle(fd), \
-	FileDispositionInfo, &i, sizeof(i)); \
-  } while(0)
+#define UNLINK(unused, fd) SetFileInformationByHandle( \
+    (HANDLE)_get_osfhandle(fd), FileDispositionInfo, \
+    &(FILE_DISPOSITION_INFO){.DeleteFile = TRUE}, sizeof(FILE_DISPOSITION_INFO))
 #else // TODO: find fixes for other OSes
 #define UNLINK(path, unused) unlink(path) // TOCTOU race condition :(
 #endif
@@ -151,10 +148,6 @@ static FILE *openw(const char *op) {
   }
 #endif
   return fp;
-}
-static void unlink_and_close(const char *path, FILE *fp) {
-  if(path) UNLINK(path, fileno(fp));
-  fclose(fp);
 }
 typedef struct {
   FILE *const fp;
@@ -317,13 +310,15 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c,
       case VP8_ENC_ERROR_BAD_WRITE: PW("I/O error"); break;
       default: PW("???");
     }
-    unlink_and_close(op, o.custom_ptr);
+    if(op) UNLINK(op, fileno(o.custom_ptr));
+    fclose(o.custom_ptr);
     free(b);
     return 1;
   }
   if(fflush(o.custom_ptr)) {
     EW;
-    unlink_and_close(op, o.custom_ptr);
+    if(op) UNLINK(op, fileno(o.custom_ptr));
+    fclose(o.custom_ptr);
     free(b);
     return 1;
   }
@@ -441,7 +436,8 @@ static bool w2p(const char *ip, const char *op) {
       = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
 #define W2P_RM \
   do { \
-    unlink_and_close(op, pi.fp); \
+    if(op) UNLINK(op, fileno(pi.fp)); \
+    fclose(pi.fp); \
     png_destroy_write_struct(&p, &n); \
     free(b); \
     return 1; \

@@ -60,8 +60,8 @@
 -#endif
    return fp;
  }
- static void unlink_open_file(const char *path, int fd) {
-@@ -127,7 +114,6 @@ static FILE *openw(const char *op) {
+ #ifdef __FreeBSD__ // why isn't this in POSIX?
+@@ -123,7 +110,6 @@ static FILE *openw(const char *op) {
    P("Encoding %s ...\n", op ? op : "<stdout>");
    if(!op) return stdout;
    FILE *fp;
@@ -69,7 +69,7 @@
    int fd = open(op, O_WRONLY | O_BINARY | O_CREAT | (force ? O_TRUNC : O_EXCL),
  #ifdef _WIN32
        S_IREAD | S_IWRITE
-@@ -145,12 +131,6 @@ static FILE *openw(const char *op) {
+@@ -141,12 +127,6 @@ static FILE *openw(const char *op) {
      close(fd);
      return 0;
    }
@@ -81,8 +81,8 @@
 -#endif
    return fp;
  }
- static void unlink_and_close(const char *path, FILE *fp) {
-@@ -215,7 +195,7 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
+ typedef struct {
+@@ -207,7 +187,7 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
  }
  static bool p2w(const char *ip, const char *op, const WebPConfig *c,
      bool doprogress) {
@@ -91,7 +91,7 @@
    if(!pi.fp) return 1;
    uint32_t *b = 0;
    png_info *n = 0;
-@@ -349,7 +329,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
+@@ -343,7 +323,7 @@ Lossless features:%s%s%s%s\nColors: %s%u\n",
    return 0;
  }
  static bool w2p(const char *ip, const char *op) {
