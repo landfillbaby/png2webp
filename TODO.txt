@@ -94,7 +94,7 @@ super strict (not VP8X, no metadata): the above &&
 or is it this (x always even)?
 ~x % 2u && x - 12u - y % 2u == y
 
-try to make unlink_and_close atomic/race-free/non-TOCTOU (FIO01-C)
+try to make unlink+close atomic/race-free/non-TOCTOU (FIO01-C)
 like a delete on close flag or something
 done: Windows, FreeBSD
 other OSes: ???
