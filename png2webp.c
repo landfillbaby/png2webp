@@ -166,8 +166,7 @@ static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
 }
 static void pngflush(png_struct *p) {
 #ifdef DOFLUSH
-  pngptr *i = png_get_io_ptr(p);
-  if(fflush(i->fp)) png_error(p, "I/O error");
+  if(fflush(((pngptr *)png_get_io_ptr(p))->fp)) png_error(p, "I/O error");
 #else
   (void)p;
 #endif
