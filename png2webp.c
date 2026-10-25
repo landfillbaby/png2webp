@@ -181,27 +181,23 @@ static void pngwrite(png_struct *p, uint8_t *d, size_t s) {
 }
 static void pngflush(png_struct *p) {
 #ifdef DOFLUSH
-  pngptr *i = png_get_io_ptr(p);
-  if(fflush(i->fp)) png_error(p, "I/O error");
+  if(fflush(((pngptr *)png_get_io_ptr(p))->fp)) png_error(p, "I/O error");
 #else
   (void)p;
 #endif
 }
 static PNG_NORETURN void pngrerr(png_struct *p, const char *s) {
-  pngptr *i = png_get_io_ptr(p);
-  const char *ip = i->path;
+  const char *ip = ((pngptr *)png_get_io_ptr(p))->path;
   PR(s);
   png_longjmp(p, 1);
 }
 static PNG_NORETURN void pngwerr(png_struct *p, const char *s) {
-  pngptr *i = png_get_io_ptr(p);
-  const char *op = i->path;
+  const char *op = ((pngptr *)png_get_io_ptr(p))->path;
   PW(s);
   png_longjmp(p, 1);
 }
 static void pngwarn(png_struct *p, const char *s) {
-  pngptr *i = png_get_io_ptr(p);
-  P("Warning: %s: %s\n", i->path, s);
+  P("Warning: %s: %s\n", ((pngptr *)png_get_io_ptr(p))->path, s);
 }
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
