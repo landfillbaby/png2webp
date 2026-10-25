@@ -27,6 +27,7 @@
 #else
 #include <unistd.h>
 #endif
+#include <errno.h>
 #include <inttypes.h>
 #include <setjmp.h>
 #include <stdbool.h>
@@ -46,24 +47,6 @@
 #define O_BINARY 0
 #endif
 #endif
-#define P(...) fprintf(stderr, __VA_ARGS__)
-#define PV(...) (verbose ? P(__VA_ARGS__) : 0)
-#define PR(x) P("ERROR reading %s: %s\n", ip, x)
-#define PW(x) P("ERROR writing %s: %s\n", op, x)
-#ifdef DOPROGRESS
-#define DOPROGRESS_CHAR "t"
-#define DOPROGRESS_CHK (doprogress = doprogress || isatty(2))
-static int progress(int percent, const WebPPicture *x) {
-  (void)x;
-  char h[64];
-  for(size_t n = 0; n < 64u;) h[n++] = '#';
-  P("\r[%-64.*s] %u%%", (unsigned)percent * 16u / 25u, h, (unsigned)percent);
-  return 1;
-}
-#else
-#define DOPROGRESS_CHAR
-#define DOPROGRESS_CHK ((void)0)
-#endif
 static int help(void) {
   // PNG2WebP v1.x.y-zz-g1234567 NOFOPENX USEGETOPT LOSSYISERROR DOFLUSH
   fputs("PNG2WebP " VERSION
@@ -82,8 +65,8 @@ static int help(void) {
       "\n\
 \n\
 Usage:\n\
-png2webp [-refv" DOPROGRESS_CHAR "] [--] INFILE ...\n\
-png2webp -p[refv" DOPROGRESS_CHAR "] [--] [INFILE [OUTFILE]]\n\
+png2webp [-refv] [--] INFILE ...\n\
+png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
 \n\
 -p: Work with a single file, allowing piping from stdin or to stdout,\n\
     or using a different output filename to the input.\n\
@@ -93,35 +76,32 @@ png2webp -p[refv" DOPROGRESS_CHAR "] [--] [INFILE [OUTFILE]]\n\
 -r: Convert from WebP to PNG instead.\n\
 -e: Keep RGB data on pixels where alpha is 0. Always enabled for `-r`.\n\
 -f: Force overwrite of output files (has no effect on stdout).\n\
--v: Be verbose.\n"
-#ifdef DOPROGRESS
-"-" DOPROGRESS_CHAR
-": Print a progress bar even when stderr isn't a terminal (not for `-r`).\n"
-#endif
-"--: Explicitly stop parsing options.\n", stderr);
+-v: Be verbose.\n\
+--: Explicitly stop parsing options.\n", stderr);
   return -1;
 }
 static bool force, verbose; // TODO: no global vars
+#define P(...) fprintf(stderr, __VA_ARGS__)
+#define PV(...) (verbose ? P(__VA_ARGS__) : 0)
+#define PR(x) P("ERROR reading %s: %s\n", ip, x)
+#define PW(x) P("ERROR writing %s: %s\n", op, x)
 static FILE *openr(const char *ip) {
   P("Decoding %s ...\n", ip ? ip : "<stdin>");
   if(!ip) return stdin;
-  FILE *fp;
 #ifdef NOFOPENX
   int fd = open(ip, O_RDONLY | O_BINARY);
   if(fd == -1) {
     PR("Couldn't open");
     return 0;
   }
-  if(!(fp = fdopen(fd, "rb"))) {
+  FILE *fp = fdopen(fd, "rb");
+  if(!fp) {
     PR("Couldn't open");
     close(fd);
-    return 0;
   }
 #else
-  if(!(fp = fopen(ip, "rb"))) {
-    PR("Couldn't open");
-    return 0;
-  }
+  FILE *fp = fopen(ip, "rb");
+  if(!fp) PR("Couldn't open");
 #endif
   return fp;
 }
@@ -137,7 +117,6 @@ static FILE *openr(const char *ip) {
 static FILE *openw(const char *op) {
   P("Encoding %s ...\n", op ? op : "<stdout>");
   if(!op) return stdout;
-  FILE *fp;
 #ifdef NOFOPENX
   int fd = open(op, O_WRONLY | O_BINARY | O_CREAT | (force ? O_TRUNC : O_EXCL),
 #ifdef _WIN32
@@ -147,26 +126,23 @@ static FILE *openw(const char *op) {
 #endif
   );
   if(fd == -1) {
-    PW("Couldn't open");
+    PW((force && errno == EEXIST) ? "File exists" : "Couldn't open");
     return 0;
   }
-  if(!(fp = fdopen(fd, "wb"))) {
+  FILE *fp = fdopen(fd, "wb");
+  if(!fp) {
     PW("Couldn't open");
     UNLINK(op, fd);
     close(fd);
-    return 0;
   }
 #else
-  if(!(fp = fopen(op, force ? "wb" : "wbx"))) {
-    PW("Couldn't open");
-    return 0;
-  }
+  FILE *fp = fopen(op, force ? "wb" : "wbx");
+  if(!fp) PW((force && errno == EEXIST) ? "File exists" : "Couldn't open");
 #endif
   return fp;
 }
 typedef struct {
   FILE *const fp;
-  const char *const path;
   size_t len;
 } pngptr;
 static void pngread(png_struct *p, uint8_t *d, size_t s) {
@@ -187,17 +163,17 @@ static void pngflush(png_struct *p) {
 #endif
 }
 static PNG_NORETURN void pngrerr(png_struct *p, const char *s) {
-  const char *ip = ((pngptr *)png_get_io_ptr(p))->path;
+  const char *ip = png_get_error_ptr(p);
   PR(s);
   png_longjmp(p, 1);
 }
 static PNG_NORETURN void pngwerr(png_struct *p, const char *s) {
-  const char *op = ((pngptr *)png_get_io_ptr(p))->path;
+  const char *op = png_get_error_ptr(p);
   PW(s);
   png_longjmp(p, 1);
 }
 static void pngwarn(png_struct *p, const char *s) {
-  P("Warning: %s: %s\n", ((pngptr *)png_get_io_ptr(p))->path, s);
+  P("Warning: %s: %s\n", (const char *)png_get_error_ptr(p), s);
 }
 static int webpwrite(const uint8_t *d, size_t s, const WebPPicture *p) {
   return (int)fwrite(d, s, 1, p->custom_ptr);
@@ -213,17 +189,13 @@ static bool init_webpconfig(WebPConfig *c, bool exact) {
   c->exact = exact;
   return 0;
 }
-static bool p2w(const char *ip, const char *op, const WebPConfig *c
-#ifdef DOPROGRESS
-    , bool doprogress
-#endif
-    ) {
-  pngptr pi = {openr(ip), ip, 0};
+static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
+  pngptr pi = {openr(ip), 0};
   if(!pi.fp) return 1;
   uint32_t *b = 0;
   png_info *n = 0;
   png_struct *p
-      = png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, pngrerr, pngwarn);
+      = png_create_read_struct(PNG_LIBPNG_VER_STRING, ip, pngrerr, pngwarn);
 #define P2W_CLOSE \
   do { \
     fclose(pi.fp); \
@@ -302,25 +274,14 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
   WebPAuxStats s;
   WebPPicture o = {1, .width = (int)width, (int)height, .argb = b, (int)width,
-      .writer = webpwrite, .custom_ptr = openw(op), .stats = verbose ? &s : 0,
-#ifdef DOPROGRESS
-      .progress_hook = doprogress ? progress : 0,
-#endif
-      };
+      .writer = webpwrite, .custom_ptr = openw(op), .stats = verbose ? &s : 0};
   if(!o.custom_ptr) {
     free(b);
     return 1;
   }
-#ifdef DOPROGRESS
-  if(doprogress) P("[%-64.*s] %u%%", 0, "", 0u);
-#endif
   trns = (trns || (colortype & PNG_COLOR_MASK_ALPHA))
       && WebPPictureHasTransparency(&o);
-  int r = WebPEncode(c, &o);
-#ifdef DOPROGRESS
-  if(doprogress) fputs("\n", stderr);
-#endif
-  if(!r) {
+  if(!WebPEncode(c, &o)) {
     switch(o.error_code) {
       case VP8_ENC_ERROR_OUT_OF_MEMORY: PW("Out of memory"); break;
       case VP8_ENC_ERROR_INVALID_CONFIGURATION:
@@ -445,14 +406,14 @@ static bool w2p(const char *ip, const char *op) {
     return 1;
   }
   free(x);
-  pngptr pi = {openw(op), op, 0};
+  pngptr pi = {openw(op), 0};
   if(!pi.fp) {
     free(b);
     return 1;
   }
   png_info *n = 0;
   png_struct *p
-      = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, pngwerr, pngwarn);
+      = png_create_write_struct(PNG_LIBPNG_VER_STRING, op, pngwerr, pngwarn);
 #define W2P_RM \
   do { \
     if(op) UNLINK(op, fileno(pi.fp)); \
@@ -501,11 +462,8 @@ int main(int sargc, char **argv) {
     }
   }
   bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0;
-#ifdef DOPROGRESS
-  bool doprogress = 0;
-#endif
 #ifdef USEGETOPT
-  for(int c; (c = getopt(sargc, argv, ":prefv" DOPROGRESS_CHAR)) != -1;)
+  for(int c; (c = getopt(sargc, argv, ":prefv")) != -1;)
     switch(c)
 #else
   while(--argc && **++argv == '-' && argv[0][1])
@@ -524,9 +482,6 @@ int main(int sargc, char **argv) {
       case 'e': exact = 1; break;
       case 'f': force = 1; break;
       case 'v': verbose = 1; break;
-#ifdef DOPROGRESS
-      case *(DOPROGRESS_CHAR): doprogress = 1; break;
-#endif
       default: return help();
     }
 #ifdef USEGETOPT
@@ -545,12 +500,7 @@ int main(int sargc, char **argv) {
     if(reverse) return w2p(usestdin ? 0 : *argv, usestdout ? 0 : argv[1]);
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
-    DOPROGRESS_CHK;
-    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c
-#ifdef DOPROGRESS
-	, doprogress
-#endif
-	);
+    return p2w(usestdin ? 0 : *argv, usestdout ? 0 : argv[1], &c);
   }
   if(!argc) return help();
   bool ret = 0;
@@ -578,7 +528,6 @@ int main(int sargc, char **argv) {
   } else {
     WebPConfig c;
     if(init_webpconfig(&c, exact)) return 1;
-    DOPROGRESS_CHK;
 #pragma omp parallel for // TODO: ditto
     for(unsigned i = 0; i < argc; i++) {
       size_t len = strlen(argv[i]);
@@ -592,11 +541,7 @@ int main(int sargc, char **argv) {
       } else {
 	memcpy(op, argv[i], len);
 	for(size_t n = 0; n < 6u; n++) (op + len)[n] = ".webp"[n];
-	ret = p2w(argv[i], op, &c
-#ifdef DOPROGRESS
-	    , doprogress
-#endif
-	    ) || ret;
+	ret = p2w(argv[i], op, &c) || ret;
 	free(op);
       }
     }
