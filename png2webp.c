@@ -471,8 +471,7 @@ int main(int sargc, char **argv) {
       return 1;
     }
   }
-  bool pipe = 0, usestdin = 0, usestdout = 0, reverse = 0, exact = 0,
-       doprogress = 0;
+  bool pipe = 0, reverse = 0, exact = 0, doprogress = 0;
 #ifdef USEGETOPT
   for(int c; (c = getopt(sargc, argv, ":prefvt")) != -1;)
     switch(c)
@@ -500,10 +499,10 @@ int main(int sargc, char **argv) {
   argc -= (unsigned)optind;
   argv += (unsigned)optind;
 #endif
-#define PIPEARG(x) (argc <= (x) || (*argv[x] == '-' && !argv[x][1]))
   if(pipe) {
-    if(argc > 2u || ((usestdin = PIPEARG(0u)) && isatty(0))
-	|| ((usestdout = PIPEARG(1u)) && isatty(1)))
+#define PIPEARG(x) (argc <= (x) || (*argv[x] == '-' && !argv[x][1]))
+	bool usestdin = PIPEARG(0u), usestdout = PIPEARG(1u);
+    if(argc > 2u || (usestdin && isatty(0)) || (usestdout && isatty(1)))
       return help();
 #ifdef _WIN32
     if(usestdin) setmode(0, O_BINARY);
