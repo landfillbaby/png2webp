@@ -344,7 +344,7 @@ static bool w2p(const char *ip, const char *op) {
 #define U(x) ((uint32_t)(*(x) | (uint32_t)(x)[1] << 8 \
       | (uint32_t)(x)[2] << 16 | (uint32_t)(x)[3] << 24))
   uint32_t l = U(i + 4u) + 8u; // RIFF header size
-  if(U(i) != U("RIFF") || U(i + 8u) != U("WEBP") || -~l < 29u) {
+  if(U(i) != U("RIFF") || U(i + 8u) != U("WEBP") || (uint32_t)(l + 1u) < 29u) {
     PR("Invalid WebP");
     fclose(fp);
     return 1;
