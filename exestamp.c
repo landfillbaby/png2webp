@@ -17,13 +17,14 @@ STAMP: new Unix timestamp,\n\
   return -1;
 }
 int main(int argc, char **argv) {
+  if(argc > 3 || argc < 2) return help();
   uint32_t t; // uninitialized warnings are false :)
   if(argc == 3) {
     if(!*argv[2] || isspace(*argv[2])) return help();
     char *n;
     t = (uint32_t)strtoull(argv[2], &n, 0);
     if(*n || errno) return help();
-  } else if(argc != 2) return help();
+  }
   FILE *const f = fopen(argv[1], argc == 3 ? "rb+" : "rb");
   if(!f) {
     perror("ERROR opening file");
