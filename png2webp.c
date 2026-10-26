@@ -100,13 +100,9 @@ static FILE *openr(const char *ip) {
   if(!(fp = fdopen(fd, "rb"))) {
     ER;
     close(fd);
-    return 0;
   }
 #else
-  if(!(fp = fopen(ip, "rb"))) {
-    ER;
-    return 0;
-  }
+  if(!(fp = fopen(ip, "rb"))) ER;
 #endif
   return fp;
 }
@@ -139,20 +135,15 @@ static FILE *openw(const char *op) {
     EW;
     UNLINK(op, fd);
     close(fd);
-    return 0;
   }
 #else
-  if(!(fp = fopen(op, force ? "wb" : "wbx"))) {
-    EW;
-    return 0;
-  }
+  if(!(fp = fopen(op, force ? "wb" : "wbx"))) EW;
 #endif
   return fp;
 }
 typedef struct {
   FILE *const fp;
   size_t len;
-  // TODO: const char *const path;
 } pngptr;
 static void pngread(png_struct *p, uint8_t *d, size_t s) {
   pngptr *i = png_get_io_ptr(p);
