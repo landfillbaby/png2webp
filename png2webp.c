@@ -83,10 +83,12 @@ png2webp -p[refv] [--] [INFILE [OUTFILE]]\n\
 static bool force, verbose; // TODO: no global vars
 #define P(...) fprintf(stderr, __VA_ARGS__)
 #define PV(...) (verbose ? P(__VA_ARGS__) : 0)
-#define PR(x) P("ERROR reading %s: %s\n", ip, x)
-#define PW(x) P("ERROR writing %s: %s\n", op, x)
+#define IP (ip ? ip : "<stdin>")
+#define OP (op ? op : "<stdout>")
+#define PR(x) P("ERROR reading %s: %s\n", IP, x)
+#define PW(x) P("ERROR writing %s: %s\n", OP, x)
 static FILE *openr(const char *ip) {
-  P("Decoding %s ...\n", ip ? ip : "<stdin>");
+  P("Decoding %s ...\n", IP);
   if(!ip) return stdin;
 #ifdef NOFOPENX
   int fd = open(ip, O_RDONLY | O_BINARY);
@@ -115,7 +117,7 @@ static FILE *openr(const char *ip) {
 #define UNLINK(path, unused) unlink(path) // TOCTOU race condition :(
 #endif
 static FILE *openw(const char *op) {
-  P("Encoding %s ...\n", op ? op : "<stdout>");
+  P("Encoding %s ...\n", OP);
   if(!op) return stdout;
 #ifdef NOFOPENX
   int fd = open(op, O_WRONLY | O_BINARY | O_CREAT | (force ? O_TRUNC : O_EXCL),
@@ -163,13 +165,11 @@ static void pngflush(png_struct *p) {
 #endif
 }
 static PNG_NORETURN void pngrerr(png_struct *p, const char *s) {
-  const char *ip = png_get_error_ptr(p);
-  PR(s);
+  P("ERROR reading %s: %s\n", (const char *)png_get_error_ptr(p), s);
   png_longjmp(p, 1);
 }
 static PNG_NORETURN void pngwerr(png_struct *p, const char *s) {
-  const char *op = png_get_error_ptr(p);
-  PW(s);
+  P("ERROR writing %s: %s\n", (const char *)png_get_error_ptr(p), s);
   png_longjmp(p, 1);
 }
 static void pngwarn(png_struct *p, const char *s) {
@@ -195,7 +195,7 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
   uint32_t *b = 0;
   png_info *n = 0;
   png_struct *p
-      = png_create_read_struct(PNG_LIBPNG_VER_STRING, ip, pngrerr, pngwarn);
+      = png_create_read_struct(PNG_LIBPNG_VER_STRING, IP, pngrerr, pngwarn);
 #define P2W_CLOSE \
   do { \
     fclose(pi.fp); \
@@ -216,17 +216,17 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
   if(width > 16383u || height > 16383u) {
     P("ERROR reading %s: Image too big (%" PRIu32 " x %" PRIu32
       ", max. 16383 x 16383 px)\n",
-	ip, width, height);
+	IP, width, height);
     P2W_CLOSE;
   }
   if((unsigned)bitdepth > 8u)
-    P("Warning: %s: %s\n", ip, "Downsampling to 8-bit");
+    P("Warning: %s: %s\n", IP, "Downsampling to 8-bit");
   bool trns = png_get_valid(p, n, PNG_INFO_tRNS);
   int32_t gamma = 45455;
   if(png_get_valid(p, n, PNG_INFO_sRGB) || png_get_gAMA_fixed(p, n, &gamma)) {
     if(gamma != 45455)
       P("Warning: %s: Nonstandard gamma: %" PRIu32 ".%05" PRIu32 "\n",
-	  ip, (uint32_t)gamma / 100000u, (uint32_t)gamma % 100000u);
+	  IP, (uint32_t)gamma / 100000u, (uint32_t)gamma % 100000u);
     png_set_gamma_fixed(p, 220000, gamma);
   }
   png_set_scale_16(p);
@@ -245,7 +245,7 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
 #ifndef NDEBUG
   size_t rowbytes = png_get_rowbytes(p, n);
   if(rowbytes != (size_t)4 * width) {
-    P("ERROR reading %s: rowbytes is %zu, should be %zu\n", ip, rowbytes,
+    P("ERROR reading %s: rowbytes is %zu, should be %zu\n", IP, rowbytes,
 	(size_t)4 * width);
     P2W_CLOSE;
   }
@@ -269,7 +269,7 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
       "???", "RGBA"};
   PV("Input info:\n%s\nDimensions: %" PRIu32 " x %" PRIu32
      "\nSize: %zu bytes (%.15g bpp)\nFormat: %u-bit %s%s%s\n",
-      ip, width, height, pi.len, (double)pi.len * 8u / (width * height),
+      IP, width, height, pi.len, (double)pi.len * 8u / (width * height),
       (unsigned)bitdepth, f[(unsigned)colortype],
       trns ? ", with transparency" : "", passes > 1u ? ", interlaced" : "");
   WebPAuxStats s;
@@ -312,7 +312,7 @@ static bool p2w(const char *ip, const char *op, const WebPConfig *c) {
 Header size: %u, image data size: %u\nUses alpha: %s\n\
 Precision bits: histogram=%u prediction=%u cross-color=%u cache=%u\n\
 Lossless features:%s%s%s%s\nColors: %s%u\n",
-      op, (unsigned)s.coded_size,
+      OP, (unsigned)s.coded_size,
       (double)(unsigned)s.coded_size * 8u / (W * H),
       (unsigned)s.lossless_hdr_size, (unsigned)s.lossless_data_size,
       trns ? "yes" : "no", (unsigned)s.histogram_bits,
@@ -381,7 +381,7 @@ static bool w2p(const char *ip, const char *op) {
 #endif
   PV("Input info:\n%s\nDimensions: %" PRIu32 " x %" PRIu32 "\nSize: %" PRIu32
      " bytes (%.15g bpp)\nUses alpha: %s\n" FMTSTR,
-      ip, W, H, l, (double)l * 8u / (W * H), A ? "yes" : "no" FMTARG);
+      IP, W, H, l, (double)l * 8u / (W * H), A ? "yes" : "no" FMTARG);
   if(o.has_animation) {
     PR("Unsupported feature: animation");
     free(x);
@@ -414,7 +414,7 @@ static bool w2p(const char *ip, const char *op) {
   }
   png_info *n = 0;
   png_struct *p
-      = png_create_write_struct(PNG_LIBPNG_VER_STRING, op, pngwerr, pngwarn);
+      = png_create_write_struct(PNG_LIBPNG_VER_STRING, OP, pngwerr, pngwarn);
 #define W2P_RM \
   do { \
     if(op) UNLINK(op, fileno(pi.fp)); \
@@ -448,7 +448,7 @@ static bool w2p(const char *ip, const char *op) {
   png_destroy_write_struct(&p, &n);
   free(b);
   PV("Output info:\n%s\nSize: %zu bytes (%.15g bpp)\nFormat: 8-bit %s\n",
-      op, pi.len, (double)pi.len * 8u / (W * H), A ? "RGBA" : "RGB");
+      OP, pi.len, (double)pi.len * 8u / (W * H), A ? "RGBA" : "RGB");
   return 0;
 }
 int main(int sargc, char **argv) {
